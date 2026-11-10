@@ -100,7 +100,7 @@ jobs:
         run: |
           sed -i "/^\[crossink\]$/,/^\[/s/^version = .*/version = $RELEASE_VERSION/" platformio.ini
 
-      - name: Build CrossInk
+      - name: Build InkLike
         env:
           CROSSINK_RELEASE_VERSION: ${{ needs.prepare-release.outputs.release_version }}
         run: pio run -j1 -e ${{ matrix.environment }}
@@ -162,15 +162,15 @@ jobs:
           chmod 600 ~/.ssh/crossink_actions_signing
           ssh-keygen -y -f ~/.ssh/crossink_actions_signing > ~/.ssh/crossink_actions_signing.pub
 
-          git config user.name "uxjulia"
-          git config user.email "julia@uxj.io"
+          git config user.name "${{ github.repository_owner }}"
+          git config user.email "${{ github.repository_owner }}@users.noreply.github.com"
           git config gpg.format ssh
           git config user.signingkey "$HOME/.ssh/crossink_actions_signing.pub"
 
           git fetch origin "$DEFAULT_BRANCH"
-          git worktree add ../crossink-pages "origin/$DEFAULT_BRANCH"
-          cp ".pio/build/catalog" "../crossink-pages/docs/catalog"
-          cd ../crossink-pages
+          git worktree add ../inklike-pages "origin/$DEFAULT_BRANCH"
+          cp ".pio/build/catalog" "../inklike-pages/docs/catalog"
+          cd ../inklike-pages
           if git diff --quiet -- docs/catalog; then
             echo "docs/catalog is already current"
             exit 0

@@ -147,6 +147,11 @@ def rename_firmware(source, target, env):
         release_dst = os.path.join(build_dir, f'firmware-{device_type}-{release_version}.bin')
         _copy_artifact(src, release_dst)
 
+    # Keep canonical names for OTA/catalogs and a branded copy for manual installs.
+    version_suffix = f'-{release_version}' if release_version else ''
+    branded_dst = os.path.join(build_dir, f'InkLike-{device_type}{version_suffix}.bin')
+    _copy_artifact(src, branded_dst)
+
 
 try:
     Import('env')                                           # noqa: F821  # type: ignore[name-defined]

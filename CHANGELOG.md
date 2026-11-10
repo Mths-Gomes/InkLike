@@ -1,11 +1,35 @@
-## [v1.6.1] - 2026-10-03
+## [v1.0.0] - 2026-11-10
+
+First InkLike version, based on CrossInk 1.6.1.
 
 ### Added
 
 - Show a completed-books counter beneath the reader type on the Dashboard, with an open-book icon.
 - Toggle Books Read counters on the Dashboard and in Reading Stats independently of Reserve Fuel, and group Books Read with Reserve Fuel and Fuel-Earning in the stats card.
-- Show Reserve fuel capacity and Fuel-earning progress in the device-wide reading stats, with chart spacing matching the per-book screen.
+- Show Reserve Fuel capacity and Fuel-Earning progress in the device-wide reading stats, with chart spacing matching the per-book screen.
 - Protect reading streaks with device-local Reserve Fuel, with configurable capacity and earning interval.
+
+### Changed
+
+- Introduce InkLike branding and an independent version sequence starting at 1.0.0.
+- Rewrite the README around personal e-readers, reading stats, and practical reading features, with upstream credits in one section.
+- Check InkLike releases for online updates and provide InkLike-named firmware copies for manual installation.
+- Give the Reserve Fuel can icon a horizontal handle and long angled pouring spout to make it easier to recognize.
+- Label the Dashboard Reserve Fuel balance as icon, number, and fuel name, matching the streak row.
+- Translate Reserve Fuel settings and balance into all supported interface languages.
+
+### Fixed
+
+- Use title capitalization for Reserve Fuel settings and reading stats labels, preserving lowercase on the Dashboard.
+- Hide the Reserve Fuel earning interval setting while Reserve Fuel is off.
+- Keep the Dashboard streak text readable by placing Reserve Fuel on its own row, aligned below the streak icon.
+
+## Upstream Release History
+
+## [v1.6.1] - 2026-10-03
+
+### Added
+
 
 - Assign a physical-button-only Home/Reader shortcut that returns from nested reader menus directly to the open book, and otherwise returns Home.
 - Turn reading stats tracking on or off for the whole device or individual EPUB and XTC books, while keeping saved history and Time Left estimates.
@@ -29,9 +53,6 @@
 
 ### Changed
 
-- Give the Reserve Fuel can icon a horizontal handle and long angled pouring spout to make it easier to recognize.
-- Label the Dashboard Reserve Fuel balance as icon, number, and fuel name, matching the streak row.
-- Translate Reserve Fuel settings and balance into all supported interface languages.
 - Set Power short-press and long-press to Sleep, Wake, or Sleep/Wake separately; holding Power can always wake the device. Chord shortcuts and the home button can also now sleep the device.
 - Brightness and warmth gestures now respond while you drag, with longer swipes allowing finer one-point adjustments.
 - Text drawing resolves clipping and screen rotation once per glyph, reducing work when painting menus and book pages.
@@ -58,9 +79,6 @@
 
 ### Fixed
 
-- Use title capitalization for Reserve Fuel settings and reading stats labels, preserving lowercase on the Dashboard.
-- Hide the Reserve Fuel earning interval setting while Reserve Fuel is off.
-- Keep the Dashboard streak text readable by placing Reserve Fuel on its own row, aligned below the streak icon.
 - File Transfer choices no longer appear preselected when opened on a touch device.
 - EPUB paragraphs now inherit first-line indentation from HTML and body styles while retaining paragraph-level overrides.
 - Saved clipping lists now show a scrollbar when more clippings are available below the visible rows.
