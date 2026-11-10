@@ -22,6 +22,7 @@
 #include "I18nKeys.h"
 #include "QuickActions.h"
 #include "SettingsList.h"
+#include "activities/reader/ReserveFuelStore.h"
 #include "fontIds.h"
 #include "util/FrontlightSchedule.h"
 #include "util/ReaderStatusBarJson.h"
@@ -916,10 +917,15 @@ bool CrossPointSettings::fromJson(JsonVariantConst doc, bool importingCrossPoint
 }
 
 bool CrossPointSettings::saveToFile() const {
-  std::lock_guard<std::mutex> lock(storeMutex);
-  JsonDocument doc;
-  toJson(doc);
-  return PersistableStoreBase::writeDocToFileAtomically(SETTINGS_FILE_JSON, doc);
+  bool saved;
+  {
+    std::lock_guard<std::mutex> lock(storeMutex);
+    JsonDocument doc;
+    toJson(doc);
+    saved = PersistableStoreBase::writeDocToFileAtomically(SETTINGS_FILE_JSON, doc);
+  }
+  if (saved) ReserveFuelStore::settingsSaved();
+  return saved;
 }
 
 bool CrossPointSettings::loadFromFile() {

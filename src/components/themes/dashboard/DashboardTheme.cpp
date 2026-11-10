@@ -31,6 +31,7 @@
 #include "components/icons/evening.h"
 #include "components/icons/morning.h"
 #include "components/icons/night.h"
+#include "components/icons/reserveFuelIcons.h"
 #include "components/icons/streak.h"
 #include "fontIds.h"
 
@@ -445,8 +446,8 @@ void formatStreakStat(const GlobalReadingStats* globalStats, char* buf, const si
   snprintf(buf, len, tr(STR_STATS_DAY_STREAK_FORMAT), static_cast<unsigned>(streak));
 }
 
-void drawIconLabel(const GfxRenderer& renderer, const uint8_t* icon, const int iconX, const int centerY,
-                   const char* label, const int maxTextW, const bool inverted = false) {
+int drawIconLabel(const GfxRenderer& renderer, const uint8_t* icon, const int iconX, const int centerY,
+                  const char* label, const int maxTextW, const bool inverted = false) {
   const std::string visibleLabel = renderer.truncatedText(UI_10_FONT_ID, label, maxTextW);
   const int lineH = renderer.getLineHeight(UI_10_FONT_ID);
   if (inverted) {
@@ -456,6 +457,7 @@ void drawIconLabel(const GfxRenderer& renderer, const uint8_t* icon, const int i
   }
   renderer.drawText(UI_10_FONT_ID, iconX + kFooterIconSize + kFooterIconTextGap, centerY - lineH / 2,
                     visibleLabel.c_str(), !inverted);
+  return renderer.getTextWidth(UI_10_FONT_ID, visibleLabel.c_str());
 }
 
 void drawRightAlignedIconLabel(const GfxRenderer& renderer, const uint8_t* icon, const int rightX, const int centerY,
@@ -529,7 +531,23 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
   formatStreakStat(globalStats, streakBuf, sizeof(streakBuf));
 
   const int leftTextW = renderer.getScreenWidth() / 2 - inset - kFooterIconSize - kFooterIconTextGap;
-  drawIconLabel(renderer, StreakIcon, coverRect.x, centerY, streakBuf, leftTextW, inverted);
+  const bool showFuel = SETTINGS.shouldTrackReadingStats() && SETTINGS.reserveFuelCapacity != 0;
+  constexpr int fuelTextWidth = 18;
+  constexpr int fuelGap = 12;
+  const int fuelWidth = showFuel ? kFooterIconSize + kFooterIconTextGap + fuelTextWidth + fuelGap : 0;
+  const int streakTextWidth = drawIconLabel(renderer, StreakIcon, coverRect.x, centerY, streakBuf,
+                                            std::max(1, leftTextW - fuelWidth), inverted);
+  if (showFuel && globalStats) {
+    ReadingStatsDateTime today;
+    const bool hasDate = getCurrentLocalReadingStatsDateTime(today);
+    const auto fuel = globalStats->reserveFuelView(hasDate ? &today.date : nullptr);
+    char balance[4];
+    snprintf(balance, sizeof(balance), "%u", static_cast<unsigned>(fuel.balance));
+    const int fuelX = coverRect.x + kFooterIconSize + kFooterIconTextGap + streakTextWidth + fuelGap;
+    drawLucideIcon(renderer, icon_reserve_fuel_24, fuelX, centerY - kFooterIconSize / 2, !inverted);
+    renderer.drawText(UI_10_FONT_ID, fuelX + kFooterIconSize + kFooterIconTextGap,
+                      centerY - renderer.getLineHeight(UI_10_FONT_ID) / 2, balance, !inverted);
+  }
 
   const char* readerLabel = readerTypeLabel(globalStats);
   const int rightX = renderer.getScreenWidth() - inset - (gpio.deviceIsX3() ? kPairInwardShiftX3 : 0);

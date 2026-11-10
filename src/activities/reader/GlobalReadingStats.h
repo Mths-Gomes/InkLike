@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "ReadingStatsUtils.h"
+#include "ReserveFuel.h"
 
 // Cumulative reading statistics across all books, persisted to
 // /.crosspoint/global_stats.bin.
@@ -16,6 +17,11 @@ struct GlobalReadingStats {
   uint32_t readingHistoryAnchorDay = 0;
   std::array<uint8_t, READING_HISTORY_BYTES> readingHistoryBits{};
   uint16_t longestReadingStreak = 0;
+  bool reserveFuelLocalHistory = true;
+  ReserveFuelState reserveFuel;  // Local view only; never serialized or merged.
+
+  void refreshReserveFuel();
+  ReserveFuelState reserveFuelView(const ReadingStatsDate* today) const;
 
   static constexpr uint8_t CURRENT_FILE_VERSION = 3;
   static constexpr size_t CURRENT_FILE_SIZE = 159;

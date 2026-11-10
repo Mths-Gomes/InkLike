@@ -46,6 +46,9 @@ class HalFile : public Print {
     cursor_ = 0;
     return true;
   }
+  bool isDirectory() const { return false; }
+  size_t getName(char*, size_t) const { return 0; }
+  HalFile openNextFile() { return {}; }
   size_t fileSize() const { return data_ ? data_->bytes.size() : 0; }
   explicit operator bool() const { return static_cast<bool>(data_); }
 
@@ -58,6 +61,8 @@ using FsFile = HalFile;
 
 class HalStorage {
  public:
+  HalFile open(const char*) { return {}; }
+  bool ensureDirectoryExists(const char*) { return true; }
   void reset() {
     files_.clear();
     failRenameFrom_.clear();

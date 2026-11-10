@@ -9,6 +9,8 @@
 #include <limits>
 #include <string>
 
+#include "CrossPointSettings.h"
+#include "ReserveFuelStore.h"
 #include "util/FileContentEquals.h"
 
 namespace {
@@ -285,6 +287,7 @@ static StatsLoadOutcome loadFromFile(const char* path, GlobalReadingStats& out) 
 
 GlobalReadingStats GlobalReadingStats::load() {
   GlobalReadingStats stats;
+  stats.reserveFuel = ReserveFuelStore::load();
   const StatsLoadOutcome primary = loadFromFile(GLOBAL_STATS_PATH, stats);
   if (primary.result == StatsLoadResult::Ok) return stats;
   if (primary.result == StatsLoadResult::NewerFormat) {
@@ -323,6 +326,9 @@ bool GlobalReadingStats::hasSyncedStats() {
 
 GlobalReadingStats GlobalReadingStats::loadAggregated(const GlobalReadingStats& localStats) {
   GlobalReadingStats stats = localStats;
+  stats.reserveFuelLocalHistory = false;
+  ReadingStatsDateTime now;
+  if (getCurrentLocalReadingStatsDateTime(now)) stats.reserveFuel = localStats.reserveFuelView(&now.date);
   FsFile dir = Storage.open(SYNCED_STATS_DIR);
   if (!dir) return stats;
 
@@ -373,13 +379,16 @@ void GlobalReadingStats::save() const {
     LOG_ERR("GSTATS", "Refusing to overwrite on-disk stats after newer-format file was detected");
     return;
   }
-  saveToFile(*this, GLOBAL_STATS_PATH, GLOBAL_STATS_BAK_PATH);
+  if (saveToFile(*this, GLOBAL_STATS_PATH, GLOBAL_STATS_BAK_PATH)) {
+    ReserveFuelStore::update(*this, nullptr, ReserveFuelStore::Horizon::CommittedHistory);
+  }
 }
 
 static uint32_t s_localResetRevision = 0;
 
 bool GlobalReadingStats::resetLocal() {
   if (!saveToFile(GlobalReadingStats{}, GLOBAL_STATS_PATH, nullptr)) return false;
+  ReserveFuelStore::update(GlobalReadingStats{});
   s_localResetRevision++;
   return true;
 }
@@ -397,10 +406,34 @@ void GlobalReadingStats::recordReadingSpan(const ReadingStatsDateTime& localStar
 }
 
 uint16_t GlobalReadingStats::currentReadingStreak(const ReadingStatsDate* today) const {
+  const auto view = reserveFuelView(today);
+  if (!reserveFuelLocalHistory) {
+    return std::max(static_cast<uint16_t>(std::min<uint32_t>(view.streak, UINT16_MAX)),
+                    computeReadingHistoryCurrentStreak(readingHistoryAnchorDay, readingHistoryBits, today));
+  }
+  if (view.day != 0 && today && readingStatsDayIndex(*today) >= view.day) {
+    return static_cast<uint16_t>(std::min<uint32_t>(view.streak, UINT16_MAX));
+  }
   return computeReadingHistoryCurrentStreak(readingHistoryAnchorDay, readingHistoryBits, today);
 }
 
 uint16_t GlobalReadingStats::displayLongestReadingStreak() const {
-  return std::max(longestReadingStreak,
-                  computeReadingHistoryLongestStreak(readingHistoryAnchorDay, readingHistoryBits));
+  return std::max(
+      static_cast<uint16_t>(std::min<uint32_t>(reserveFuel.longest, UINT16_MAX)),
+      std::max(longestReadingStreak, computeReadingHistoryLongestStreak(readingHistoryAnchorDay, readingHistoryBits)));
+}
+
+void GlobalReadingStats::refreshReserveFuel() { ReserveFuelStore::update(*this, &reserveFuel); }
+
+ReserveFuelState GlobalReadingStats::reserveFuelView(const ReadingStatsDate* today) const {
+  auto view = reserveFuel;
+  if (today && today->isValid()) {
+    const std::array<uint8_t, READING_HISTORY_BYTES> emptyHistory{};
+    advanceReserveFuel(
+        view, readingStatsDayIndex(*today), reserveFuelLocalHistory ? readingHistoryAnchorDay : 0,
+        reserveFuelLocalHistory ? readingHistoryBits : emptyHistory,
+        reserveFuelLocalHistory ? totalReadingSeconds : view.readingSeconds,
+        {SETTINGS.reserveFuelCapacity, SETTINGS.reserveFuelInterval, SETTINGS.shouldTrackReadingStats()});
+  }
+  return view;
 }

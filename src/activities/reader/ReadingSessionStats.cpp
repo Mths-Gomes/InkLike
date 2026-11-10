@@ -33,5 +33,6 @@ void refreshGlobalStatsAfterOverlay(GlobalReadingStats& live, const uint32_t res
     live = disk;
   } else {
     live.completedBooks = disk.completedBooks;
+    live.reserveFuel = disk.reserveFuel;
   }
 }

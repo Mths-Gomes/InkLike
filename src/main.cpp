@@ -94,6 +94,7 @@ inline esp_sleep_wakeup_cause_t esp_sleep_get_wakeup_cause() { return ESP_SLEEP_
 #include "activities/ActivityManager.h"
 #include "activities/boot_sleep/ImageFolderIndex.h"
 #include "activities/home/BookActions.h"
+#include "activities/reader/GlobalReadingStats.h"
 #include "activities/reader/KOReaderSyncActivity.h"
 #include "activities/reader/ReaderUtils.h"
 #include "activities/reader/ReadingStatsUtils.h"
@@ -1344,6 +1345,10 @@ void setup() {
   HalSystem::checkPanic();
 
   SETTINGS.loadFromFile();
+  {
+    auto stats = GlobalReadingStats::load();
+    stats.refreshReserveFuel();
+  }
   Storage.installDateTimeCallback(&SETTINGS.clockUtcOffsetQ);
   APP_STATE.loadFromFile();
   mirrorWakeShortPressToNvs();

@@ -2,6 +2,8 @@
 
 ### Added
 
+- Protect reading streaks with device-local Reserve Fuel, with configurable capacity and earning interval.
+
 - Assign a physical-button-only Home/Reader shortcut that returns from nested reader menus directly to the open book, and otherwise returns Home.
 - Turn reading stats tracking on or off for the whole device or individual EPUB and XTC books, while keeping saved history and Time Left estimates.
 - Assign separate short-press and long-press actions to the Left/Up and Right/Down side buttons; existing side-button layouts migrate to matching individual actions.
