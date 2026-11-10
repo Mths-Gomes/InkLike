@@ -908,6 +908,7 @@ STR_MONTH_NOV: "novembro"
 STR_MONTH_DEC: "dezembro"
 
 STR_RESERVE_FUEL_LIMIT: "Limite de combustível de reserva"
+STR_RESERVE_FUEL_BALANCE_FORMAT: "%u combustível de reserva"
 STR_RESERVE_FUEL_INTERVAL: "Dias para ganhar combustível de reserva"
 STR_RF_ONE: "1 CR"
 STR_RF_THREE: "3 CR"

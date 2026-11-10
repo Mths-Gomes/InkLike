@@ -531,28 +531,31 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
   formatStreakStat(globalStats, streakBuf, sizeof(streakBuf));
 
   const int leftTextW = renderer.getScreenWidth() / 2 - inset - kFooterIconSize - kFooterIconTextGap;
-  const bool showFuel = SETTINGS.shouldTrackReadingStats() && SETTINGS.reserveFuelCapacity != 0;
-  constexpr int fuelTextWidth = 18;
-  constexpr int fuelGap = 12;
-  const int fuelWidth = showFuel ? kFooterIconSize + kFooterIconTextGap + fuelTextWidth + fuelGap : 0;
-  const int streakTextWidth = drawIconLabel(renderer, StreakIcon, coverRect.x, centerY, streakBuf,
-                                            std::max(1, leftTextW - fuelWidth), inverted);
-  if (showFuel && globalStats) {
+  const bool showFuel =
+      SETTINGS.shouldTrackReadingStats() && SETTINGS.reserveFuelCapacity != 0 && globalStats != nullptr;
+  constexpr int footerRowGap = 8;
+  const int rowSpacing = std::max(kFooterIconSize, renderer.getLineHeight(UI_10_FONT_ID)) + footerRowGap;
+  const int streakCenterY = showFuel ? centerY - rowSpacing / 2 : centerY;
+  drawIconLabel(renderer, StreakIcon, coverRect.x, streakCenterY, streakBuf, std::max(1, leftTextW), inverted);
+  if (showFuel) {
     ReadingStatsDateTime today;
     const bool hasDate = getCurrentLocalReadingStatsDateTime(today);
     const auto fuel = globalStats->reserveFuelView(hasDate ? &today.date : nullptr);
-    char balance[4];
-    snprintf(balance, sizeof(balance), "%u", static_cast<unsigned>(fuel.balance));
-    const int fuelX = coverRect.x + kFooterIconSize + kFooterIconTextGap + streakTextWidth + fuelGap;
-    drawLucideIcon(renderer, icon_reserve_fuel_24, fuelX, centerY - kFooterIconSize / 2, !inverted);
-    renderer.drawText(UI_10_FONT_ID, fuelX + kFooterIconSize + kFooterIconTextGap,
-                      centerY - renderer.getLineHeight(UI_10_FONT_ID) / 2, balance, !inverted);
+    char fuelLabel[96];
+    snprintf(fuelLabel, sizeof(fuelLabel), tr(STR_RESERVE_FUEL_BALANCE_FORMAT), static_cast<unsigned>(fuel.balance));
+    const int fuelTextX = coverRect.x + kFooterIconSize + kFooterIconTextGap;
+    const int maxFuelTextW = std::max(1, renderer.getScreenWidth() - inset - fuelTextX);
+    const std::string visibleFuelLabel = renderer.truncatedText(UI_10_FONT_ID, fuelLabel, maxFuelTextW);
+    const int fuelCenterY = streakCenterY + rowSpacing;
+    drawLucideIcon(renderer, icon_reserve_fuel_24, coverRect.x, fuelCenterY - kFooterIconSize / 2, !inverted);
+    renderer.drawText(UI_10_FONT_ID, fuelTextX, fuelCenterY - renderer.getLineHeight(UI_10_FONT_ID) / 2,
+                      visibleFuelLabel.c_str(), !inverted);
   }
 
   const char* readerLabel = readerTypeLabel(globalStats);
   const int rightX = renderer.getScreenWidth() - inset - (gpio.deviceIsX3() ? kPairInwardShiftX3 : 0);
   const int maxReaderTextW = std::max(1, renderer.getScreenWidth() / 2 - inset - kFooterIconSize - kFooterIconTextGap);
-  drawRightAlignedIconLabel(renderer, readerTypeIcon(globalStats), rightX, centerY, readerLabel, maxReaderTextW,
+  drawRightAlignedIconLabel(renderer, readerTypeIcon(globalStats), rightX, streakCenterY, readerLabel, maxReaderTextW,
                             inverted);
 }
 

@@ -26,6 +26,9 @@
 
 ### Changed
 
+- Give the Reserve Fuel can icon a horizontal handle and long angled pouring spout to make it easier to recognize.
+- Label the Dashboard Reserve Fuel balance as icon, number, and fuel name, matching the streak row.
+- Translate Reserve Fuel settings and balance into all supported interface languages.
 - Set Power short-press and long-press to Sleep, Wake, or Sleep/Wake separately; holding Power can always wake the device. Chord shortcuts and the home button can also now sleep the device.
 - Brightness and warmth gestures now respond while you drag, with longer swipes allowing finer one-point adjustments.
 - Text drawing resolves clipping and screen rotation once per glyph, reducing work when painting menus and book pages.
@@ -52,6 +55,7 @@
 
 ### Fixed
 
+- Keep the Dashboard streak text readable by placing Reserve Fuel on its own row, aligned below the streak icon.
 - File Transfer choices no longer appear preselected when opened on a touch device.
 - EPUB paragraphs now inherit first-line indentation from HTML and body styles while retaining paragraph-level overrides.
 - Saved clipping lists now show a scrollbar when more clippings are available below the visible rows.

@@ -952,6 +952,7 @@ STR_MONTH_NOV: "November"
 STR_MONTH_DEC: "December"
 
 STR_RESERVE_FUEL_LIMIT: "Reserve fuel limit"
+STR_RESERVE_FUEL_BALANCE_FORMAT: "%u reserve fuel"
 STR_RESERVE_FUEL_INTERVAL: "Days to earn reserve fuel"
 STR_RF_ONE: "1 RF"
 STR_RF_THREE: "3 RF"
