@@ -2,6 +2,8 @@
 
 ### Added
 
+- Show a completed-books counter beneath the reader type on the Dashboard, with an open-book icon.
+- Toggle Books Read counters on the Dashboard and in Reading Stats independently of Reserve Fuel, and group Books Read with Reserve Fuel and Fuel-Earning in the stats card.
 - Show Reserve fuel capacity and Fuel-earning progress in the device-wide reading stats, with chart spacing matching the per-book screen.
 - Protect reading streaks with device-local Reserve Fuel, with configurable capacity and earning interval.
 

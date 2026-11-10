@@ -266,6 +266,8 @@ const std::vector<SettingInfo>& getBaseSettingsList() {
                            "readingIdleTimeThresholdUnits", StrId::STR_CAT_SYSTEM));
     add(SettingInfo::Toggle(StrId::STR_TRACK_READING_STATS, &CrossPointSettings::trackReadingStats, "trackReadingStats",
                             StrId::STR_CAT_SYSTEM));
+    add(SettingInfo::Toggle(StrId::STR_BOOKS_READ_COUNTER, &CrossPointSettings::showBooksReadCounter,
+                            "showBooksReadCounter", StrId::STR_CAT_SYSTEM));
 
     add(SettingInfo::Enum(StrId::STR_RESERVE_FUEL_LIMIT, &CrossPointSettings::reserveFuelCapacity,
                           {StrId::STR_STATE_OFF, StrId::STR_RF_ONE, StrId::STR_RF_THREE, StrId::STR_RF_FIVE},

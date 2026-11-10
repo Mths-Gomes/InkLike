@@ -28,6 +28,7 @@
 #include "components/UiAppHelpers.h"
 #include "components/icons/afternoon.h"
 #include "components/icons/book24.h"
+#include "components/icons/completedBookIcons.h"
 #include "components/icons/evening.h"
 #include "components/icons/morning.h"
 #include "components/icons/night.h"
@@ -522,8 +523,10 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
     const int maxTextW = std::max(1, halfW - inset * 2);
     drawLeftAnchoredFooterStat(renderer, coverRect.x, centerY, maxTextW, totalTime,
                                tr(STR_STATS_TOTAL_READING_TIME_LBL_SHORT), inverted);
-    const int rightX = renderer.getScreenWidth() - inset;
-    drawRightAnchoredFooterStat(renderer, rightX, centerY, maxTextW, booksRead, tr(STR_STATS_COMPLETED_LBL), inverted);
+    if (SETTINGS.showBooksReadCounter != 0) {
+      const int rightX = renderer.getScreenWidth() - inset;
+      drawRightAnchoredFooterStat(renderer, rightX, centerY, maxTextW, booksRead, tr(STR_STATS_COMPLETED_LBL), inverted);
+    }
     return;
   }
 
@@ -533,9 +536,11 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
   const int leftTextW = renderer.getScreenWidth() / 2 - inset - kFooterIconSize - kFooterIconTextGap;
   const bool showFuel =
       SETTINGS.shouldTrackReadingStats() && SETTINGS.reserveFuelCapacity != 0 && globalStats != nullptr;
+  const bool showBooksRead = SETTINGS.showBooksReadCounter != 0 && globalStats != nullptr;
   constexpr int footerRowGap = 8;
+  constexpr int footerColumnGap = 12;
   const int rowSpacing = std::max(kFooterIconSize, renderer.getLineHeight(UI_10_FONT_ID)) + footerRowGap;
-  const int streakCenterY = showFuel ? centerY - rowSpacing / 2 : centerY;
+  const int streakCenterY = showFuel || showBooksRead ? centerY - rowSpacing / 2 : centerY;
   drawIconLabel(renderer, StreakIcon, coverRect.x, streakCenterY, streakBuf, std::max(1, leftTextW), inverted);
   if (showFuel) {
     ReadingStatsDateTime today;
@@ -544,7 +549,7 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
     char fuelLabel[96];
     snprintf(fuelLabel, sizeof(fuelLabel), tr(STR_RESERVE_FUEL_BALANCE_FORMAT), static_cast<unsigned>(fuel.balance));
     const int fuelTextX = coverRect.x + kFooterIconSize + kFooterIconTextGap;
-    const int maxFuelTextW = std::max(1, renderer.getScreenWidth() - inset - fuelTextX);
+    const int maxFuelTextW = std::max(1, renderer.getScreenWidth() / 2 - footerColumnGap / 2 - fuelTextX);
     const std::string visibleFuelLabel = renderer.truncatedText(UI_10_FONT_ID, fuelLabel, maxFuelTextW);
     const int fuelCenterY = streakCenterY + rowSpacing;
     drawLucideIcon(renderer, icon_reserve_fuel_24, coverRect.x, fuelCenterY - kFooterIconSize / 2, !inverted);
@@ -557,6 +562,20 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
   const int maxReaderTextW = std::max(1, renderer.getScreenWidth() / 2 - inset - kFooterIconSize - kFooterIconTextGap);
   drawRightAlignedIconLabel(renderer, readerTypeIcon(globalStats), rightX, streakCenterY, readerLabel, maxReaderTextW,
                             inverted);
+  if (showBooksRead) {
+    char booksLabel[96];
+    snprintf(booksLabel, sizeof(booksLabel), "%lu %s", static_cast<unsigned long>(globalStats->completedBooks),
+             tr(STR_STATS_COMPLETED_LBL));
+    const int maxBooksTextW = std::max(1, rightX - renderer.getScreenWidth() / 2 - footerColumnGap / 2 -
+                                            kFooterIconSize - kFooterIconTextGap);
+    const std::string visibleBooksLabel = renderer.truncatedText(UI_10_FONT_ID, booksLabel, maxBooksTextW);
+    const int textX = rightX - renderer.getTextWidth(UI_10_FONT_ID, visibleBooksLabel.c_str());
+    const int booksCenterY = streakCenterY + rowSpacing;
+    drawLucideIcon(renderer, icon_completed_book_24, textX - kFooterIconTextGap - kFooterIconSize,
+                   booksCenterY - kFooterIconSize / 2, !inverted);
+    renderer.drawText(UI_10_FONT_ID, textX, booksCenterY - renderer.getLineHeight(UI_10_FONT_ID) / 2,
+                      visibleBooksLabel.c_str(), !inverted);
+  }
 }
 
 void drawBookText(const GfxRenderer& renderer, const Rect& coverRect, const RecentBook& book,
