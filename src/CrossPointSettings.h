@@ -692,6 +692,12 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   uint8_t quickResumeSleepScreen = QUICK_RESUME_NEVER;
   // Master switch for automatic reading statistics; Time Left pace remains independent.
   uint8_t trackReadingStats = 1;
+  // Show completed-book counters on the Dashboard and reading stats without changing the saved total.
+  uint8_t showBooksReadCounter = 1;
+  // Maximum fuel reserves to cover streak days
+  uint8_t reserveFuelCapacity = 1;
+  // Streak days to earn new reserve fuel
+  uint8_t reserveFuelInterval = 7;
 
   ~CrossPointSettings() = default;
 

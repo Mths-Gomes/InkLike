@@ -13,6 +13,7 @@
 
 #include "GlobalReadingStats.h"
 #include "ReadingStatsUtils.h"
+#include "ReserveFuelStore.h"
 
 namespace {
 constexpr char LOG_TAG[] = "SBACK";
@@ -233,11 +234,13 @@ bool backupGlobalStats(const bool manual, char* outFileName, const size_t outFil
     if (outFileName != nullptr && outFileNameLen > 0) {
       copyString(fileName, outFileName, outFileNameLen);
     }
+    if (!ReserveFuelStore::backup(backupPath)) return false;
     LOG_DBG(LOG_TAG, "Automatic stats backup already current: %s", backupPath);
     return true;
   }
 
   if (!writeBackupFile(backupPath, data.data(), dataSize)) return false;
+  if (!ReserveFuelStore::backup(backupPath)) return false;
   pruneBackups(DEFAULT_BACKUP_KEEP_COUNT);
 
   if (outFileName != nullptr && outFileNameLen > 0) {
@@ -284,6 +287,9 @@ int pruneBackups(const int keep) {
     const int pathWritten = snprintf(path, sizeof(path), "%s/%s", BACKUP_DIR, names[static_cast<size_t>(i)].value);
     if (pathWritten <= 0 || static_cast<size_t>(pathWritten) >= sizeof(path)) continue;
     if (Storage.remove(path)) {
+      char fuelPath[160];
+      snprintf(fuelPath, sizeof(fuelPath), "%s.rf", path);
+      if (Storage.exists(fuelPath) && !Storage.remove(fuelPath)) LOG_ERR(LOG_TAG, "Could not prune %s", fuelPath);
       removed++;
     } else {
       LOG_ERR(LOG_TAG, "Failed to prune stats backup: %s", path);

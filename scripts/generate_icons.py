@@ -12,6 +12,7 @@ import tempfile
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SDK_GENERATOR = PROJECT_ROOT / "freeink-sdk/libs/assets/Icons/tools/gen_icons.py"
 SVG_DIRS = {
+    "crossink": PROJECT_ROOT / "src/components/icons/svg",
     "lucide": PROJECT_ROOT / "freeink-sdk/libs/assets/Icons/lucide/icons",
     "tabler": PROJECT_ROOT / "assets/tabler-icons/icons/outline",
     "tabler-filled": PROJECT_ROOT / "assets/tabler-icons/icons/filled",
@@ -104,6 +105,9 @@ def main():
     if args.library in ("tabler", "tabler-filled"):
         generated = output.read_text()
         output.write_text(generated.replace("Lucide", "Tabler").replace("lucide:", "tabler:"))
+    elif args.library == "crossink":
+        generated = output.read_text()
+        output.write_text(generated.replace("Lucide", "CrossInk").replace("lucide:", "crossink:"))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@
 #include <array>
 #include <cstdio>
 
+#include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "components/CompactHeader.h"
 #include "components/TouchActionButtons.h"
@@ -96,6 +97,11 @@ int sectionCardHeight(const StatsLayout& layout, const int rowCount) {
 }
 
 bool shouldShowRtcBasedStats() { return halClock.isAvailable(); }
+
+bool shouldShowReserveFuelStats(const GlobalReadingStats& stats) {
+  return shouldShowRtcBasedStats() && stats.reserveFuelLocalHistory && SETTINGS.shouldTrackReadingStats() &&
+         SETTINGS.reserveFuelCapacity != 0;
+}
 
 int noRtcCardBaseHeight(const StatsLayout& layout) { return layout.globalCardH; }
 
@@ -237,6 +243,13 @@ void drawStatCell(const GfxRenderer& renderer, const int x, const int w, const i
   const int textY = y + (h - totalTextH) / 2;
   drawCenteredLabel(renderer, UI_12_FONT_ID, x, w, textY, value, true);
   drawCenteredLabel(renderer, SMALL_FONT_ID, x, w, textY + valueLineH + 4, label);
+}
+
+void drawClippedStatCell(const GfxRenderer& renderer, const int x, const int w, const int y, const int h,
+                         const char* value, const char* label) {
+  // Translated fuel labels must stay within the three-column stats row.
+  const std::string visibleLabel = renderer.truncatedText(SMALL_FONT_ID, label, std::max(1, w - 12));
+  drawStatCell(renderer, x, w, y, h, value, visibleLabel.c_str());
 }
 
 void drawSectionCard(const GfxRenderer& renderer, const int x, const int y, const int w, const int h, const char* title,
@@ -394,7 +407,9 @@ void drawGlobalStatsCard(GfxRenderer& renderer, const int x, const int y, const 
 
   const int thirdW = w / 3;
   const int halfW = w / 2;
-  const int rowH = (h - layout.topCardTitleH) / 2;
+  const bool showFuel = shouldShowReserveFuelStats(stats);
+  const bool showBooksRead = SETTINGS.showBooksReadCounter != 0;
+  const int rowH = (h - layout.topCardTitleH) / (showFuel ? 3 : 2);
   char buf[40];
 
   snprintf(buf, sizeof(buf), "%lu", static_cast<unsigned long>(stats.totalSessions));
@@ -408,10 +423,13 @@ void drawGlobalStatsCard(GfxRenderer& renderer, const int x, const int y, const 
 
   const uint32_t avgSecs = stats.totalSessions > 0 ? stats.totalReadingSeconds / stats.totalSessions : 0;
   BookReadingStats::formatDuration(avgSecs, buf, sizeof(buf));
+  const bool useHalfWidth = showFuel || !showBooksRead;
   if (showRtcStats) {
-    drawStatCell(renderer, x, thirdW, y + layout.topCardTitleH + rowH, rowH, buf, tr(STR_STATS_AVG_SESSION_LBL));
+    drawStatCell(renderer, x, useHalfWidth ? halfW : thirdW, y + layout.topCardTitleH + rowH, rowH, buf,
+                 tr(STR_STATS_AVG_SESSION_LBL));
   } else {
-    drawStatCell(renderer, x, halfW, y + layout.topCardTitleH + rowH, rowH, buf, tr(STR_STATS_AVG_SESSION_LBL));
+    drawStatCell(renderer, x, showBooksRead ? halfW : w, y + layout.topCardTitleH + rowH, rowH, buf,
+                 tr(STR_STATS_AVG_SESSION_LBL));
   }
 
   if (showRtcStats) {
@@ -423,17 +441,33 @@ void drawGlobalStatsCard(GfxRenderer& renderer, const int x, const int y, const 
     } else {
       snprintf(buf, sizeof(buf), "-");
     }
-    drawStatCell(renderer, x + thirdW, thirdW, y + layout.topCardTitleH + rowH, rowH, buf,
-                 tr(STR_STATS_READING_STREAK_LBL));
+    drawStatCell(renderer, x + (useHalfWidth ? halfW : thirdW), useHalfWidth ? w - halfW : thirdW,
+                 y + layout.topCardTitleH + rowH, rowH, buf, tr(STR_STATS_READING_STREAK_LBL));
   }
 
-  if (stats.completedBooks > 0) {
-    snprintf(buf, sizeof(buf), "%lu", static_cast<unsigned long>(stats.completedBooks));
-  } else {
-    snprintf(buf, sizeof(buf), "-");
+  if (showBooksRead) {
+    if (stats.completedBooks > 0) {
+      snprintf(buf, sizeof(buf), "%lu", static_cast<unsigned long>(stats.completedBooks));
+    } else {
+      snprintf(buf, sizeof(buf), "-");
+    }
+    const int completedY = y + layout.topCardTitleH + rowH * (showFuel ? 2 : 1);
+    drawClippedStatCell(renderer, showRtcStats ? x + thirdW * 2 : x + halfW, showRtcStats ? thirdW : halfW, completedY,
+                        rowH, buf, tr(STR_STATS_COMPLETED_LBL));
   }
-  drawStatCell(renderer, showRtcStats ? x + thirdW * 2 : x + halfW, showRtcStats ? thirdW : halfW,
-               y + layout.topCardTitleH + rowH, rowH, buf, tr(STR_STATS_COMPLETED_LBL));
+
+  if (showFuel) {
+    ReadingStatsDateTime today;
+    const bool hasToday = getCurrentLocalReadingStatsDateTime(today);
+    const auto fuel = stats.reserveFuelView(hasToday ? &today.date : nullptr);
+    const int fuelRowY = y + layout.topCardTitleH + rowH * 2;
+    const int fuelCellW = showBooksRead ? thirdW : halfW;
+    snprintf(buf, sizeof(buf), "%u/%u", static_cast<unsigned>(fuel.balance), static_cast<unsigned>(fuel.capacity));
+    drawClippedStatCell(renderer, x, fuelCellW, fuelRowY, rowH, buf, tr(STR_STATS_RESERVE_FUEL_LBL));
+    snprintf(buf, sizeof(buf), "%u/%u", static_cast<unsigned>(fuel.progress), static_cast<unsigned>(fuel.interval));
+    drawClippedStatCell(renderer, x + fuelCellW, showBooksRead ? thirdW : w - halfW, fuelRowY, rowH, buf,
+                        tr(STR_STATS_FUEL_EARNING_LBL));
+  }
 }
 
 void drawDateField(const GfxRenderer& renderer, const int x, const int y, const int w, const char* text,
@@ -540,6 +574,7 @@ void renderGlobalStatsPage(GfxRenderer& renderer, const MappedInputManager* mapp
                            const GlobalReadingStats& stats, const bool showButtonHints, const bool showMoreButton) {
   renderer.clearScreen();
   const bool showRtcStats = shouldShowRtcBasedStats();
+  const bool showFuel = shouldShowReserveFuelStats(stats);
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto& layout = getStatsLayout(renderer, mappedInput, true, showButtonHints, showRtcStats);
   if (mappedInput && mappedInput->hasTouchHardware()) {
@@ -552,7 +587,8 @@ void renderGlobalStatsPage(GfxRenderer& renderer, const MappedInputManager* mapp
   const int cardW = screenW - metrics.contentSidePadding * 2;
   const int availableHeight =
       renderer.getScreenHeight() - metrics.topPadding - statsBottomInset(metrics, showButtonHints);
-  int globalCardH = layout.globalCardH;
+  const int baseCardH = showFuel ? layout.topCardH : layout.globalCardH;
+  int globalCardH = baseCardH;
   const int headerHeight = statsHeaderHeight(metrics, layout, mappedInput);
   int y = metrics.topPadding + headerHeight + layout.topGap;
 
@@ -560,13 +596,15 @@ void renderGlobalStatsPage(GfxRenderer& renderer, const MappedInputManager* mapp
     const int timeOfDayH = sectionCardHeight(layout, static_cast<int>(TIME_BUCKET_LABELS.size()));
     const int dayOfWeekH = sectionCardHeight(layout, static_cast<int>(DAY_LABELS.size()));
     const int compactContentHeight =
-        headerHeight + layout.topGap + layout.globalCardH + layout.cardGap + timeOfDayH + layout.cardGap + dayOfWeekH;
+        headerHeight + layout.topGap + baseCardH + layout.cardGap + timeOfDayH + layout.cardGap + dayOfWeekH;
     const int extraHeight = std::max(0, availableHeight - compactContentHeight);
     const int perBookCompactContentHeight =
         headerHeight + layout.topGap + layout.topCardH + layout.cardGap + timeOfDayH + layout.cardGap + dayOfWeekH;
     const int perBookExtraHeight = std::max(0, availableHeight - perBookCompactContentHeight);
-    const int targetGlobalCardH = globalRtcCardHeightForPerBookRowSpacing(layout, perBookExtraHeight);
-    const int extraTopCardHeight = std::min(extraHeight, std::max(0, targetGlobalCardH - layout.globalCardH));
+    const int targetGlobalCardH =
+        showFuel ? perBookRtcTopCardHeight(layout, perBookExtraHeight)
+                 : globalRtcCardHeightForPerBookRowSpacing(layout, perBookExtraHeight);
+    const int extraTopCardHeight = std::min(extraHeight, std::max(0, targetGlobalCardH - baseCardH));
     const int remainingExtraHeight = extraHeight - extraTopCardHeight;
     const int timeOfDayExtraHeight = (remainingExtraHeight * 4) / 11;
     const int dayOfWeekExtraHeight = remainingExtraHeight - timeOfDayExtraHeight;

@@ -1,0 +1,3 @@
+# Regenerate with:
+# python scripts/generate_icons.py --library crossink --manifest src/components/icons/reserveFuelIcons.manifest --sizes 24 --out src/components/icons/reserveFuelIcons.h
+reserve-fuel = reserve-fuel

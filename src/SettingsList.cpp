@@ -266,6 +266,17 @@ const std::vector<SettingInfo>& getBaseSettingsList() {
                            "readingIdleTimeThresholdUnits", StrId::STR_CAT_SYSTEM));
     add(SettingInfo::Toggle(StrId::STR_TRACK_READING_STATS, &CrossPointSettings::trackReadingStats, "trackReadingStats",
                             StrId::STR_CAT_SYSTEM));
+    add(SettingInfo::Toggle(StrId::STR_BOOKS_READ_COUNTER, &CrossPointSettings::showBooksReadCounter,
+                            "showBooksReadCounter", StrId::STR_CAT_SYSTEM));
+
+    add(SettingInfo::Enum(StrId::STR_RESERVE_FUEL_LIMIT, &CrossPointSettings::reserveFuelCapacity,
+                          {StrId::STR_STATE_OFF, StrId::STR_RF_ONE, StrId::STR_RF_THREE, StrId::STR_RF_FIVE},
+                          "reserveFuelCapacity", StrId::STR_CAT_SYSTEM)
+            .withEnumRawValues({0, 1, 3, 5}));
+    add(SettingInfo::Enum(StrId::STR_RESERVE_FUEL_INTERVAL, &CrossPointSettings::reserveFuelInterval,
+                          {StrId::STR_RF_DAYS_3, StrId::STR_RF_DAYS_7, StrId::STR_RF_DAYS_15, StrId::STR_RF_DAYS_30},
+                          "reserveFuelInterval", StrId::STR_CAT_SYSTEM)
+            .withEnumRawValues({3, 7, 15, 30}));
 
     // Frontlight quick-panel state: persisted + web-exposed, category-less so
     // it stays off the Settings screen (edited from the swipe-down panel).

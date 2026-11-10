@@ -871,6 +871,7 @@ void HomeActivity::onEnter() {
   }
 
   globalStats = GlobalReadingStats::load();
+  globalStats.refreshReserveFuel();
   showAllDevicesStats = GlobalReadingStats::hasSyncedStats();
   allDevicesGlobalStats = showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;
   if (isCarouselTheme) {
@@ -1020,6 +1021,7 @@ void HomeActivity::onFrontlightPanelClosed() {
     LOG_ERR("HOME", "Cannot rebuild Home after theme or UI scale change");
   }
   globalStats = GlobalReadingStats::load();
+  globalStats.refreshReserveFuel();
   showAllDevicesStats = GlobalReadingStats::hasSyncedStats();
   allDevicesGlobalStats = showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;
   bookStatsCached = false;
@@ -1366,6 +1368,21 @@ void HomeActivity::preRenderCarouselFrames() {
 }
 
 void HomeActivity::loop() {
+  if (millis() - reserveFuelPollMs >= 10000) {
+    reserveFuelPollMs = millis();
+    ReadingStatsDateTime now;
+    if (getCurrentLocalReadingStatsDateTime(now)) {
+      const auto day = readingStatsDayIndex(now.date);
+      if (day != reserveFuelDay) {
+        RenderLock lock;
+        reserveFuelDay = day;
+        globalStats.refreshReserveFuel();
+        allDevicesGlobalStats = showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;
+        requestUpdate();
+      }
+    }
+  }
+
   if (quickActionsLongPowerHandled) {
     if (!mappedInput.isPressed(MappedInputManager::Button::Power)) {
       quickActionsLongPowerHandled = false;
@@ -2358,6 +2375,7 @@ void HomeActivity::onReadingStatsOpen() {
           const auto* statsResult = std::get_if<ReadingStatsResult>(&result.data);
           if (statsResult && statsResult->changed) {
             globalStats = GlobalReadingStats::load();
+            globalStats.refreshReserveFuel();
             showAllDevicesStats = GlobalReadingStats::hasSyncedStats();
             allDevicesGlobalStats = showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;
             bookStatsCached = false;
@@ -2373,6 +2391,7 @@ void HomeActivity::onReadingStatsOpen() {
                              const auto* statsResult = std::get_if<ReadingStatsResult>(&result.data);
                              if (statsResult && statsResult->changed) {
                                globalStats = GlobalReadingStats::load();
+                               globalStats.refreshReserveFuel();
                                showAllDevicesStats = GlobalReadingStats::hasSyncedStats();
                                allDevicesGlobalStats =
                                    showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;

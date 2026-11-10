@@ -77,6 +77,8 @@ class HomeActivity final : public Activity {
   std::string currentBookChapterTitle;
   BookReadingStats currentBookStats;
   GlobalReadingStats globalStats;
+  uint32_t reserveFuelDay = 0;
+  unsigned long reserveFuelPollMs = 0;
   GlobalReadingStats allDevicesGlobalStats;
   bool showAllDevicesStats = false;
 

@@ -1138,3 +1138,27 @@ the card to the host. Manage Fonts performs a full rescan; alternatively remove
 this cache to force reinspection after external same-length font changes.
 
 EPUB layout cache versions and identities are unchanged by this catalog.
+
+## `/.crosspoint/reserve_fuel.bin`
+
+Device-local Reserve Fuel state; it is not part of Nearby statistics sync.
+Version 1 is 29 bytes: version `u8`, local day index `u32`, protected streak
+`u32`, longest protected streak `u32`, processed total reading seconds `u32`,
+balance/progress/capacity/earning interval/enabled/read-today (six `u8` fields),
+two reserved zero bytes, and an FNV-1a `u32` checksum of the first 25 bytes.
+All integers are little endian. Replacements use `.tmp` and retain `.bak`.
+Reading statistics are saved first; replaying their history after a failed RF
+write cannot award or spend fuel twice. A decrease in total reading seconds
+resets RF after statistics reset/restoration. Back up both files together;
+dated statistics backups include a matching `.bin.rf` companion. Restoring
+only one member of a backup pair is unsupported.
+
+Capacity is 0 (disabled), 1, 3, or 5; the earning interval is 3, 7, 15, or
+30 consecutive real reading days. Defaults are 1 and 7. An initial migration
+preserves the existing streak without awarding fuel for historical reading.
+Each completed missed local day automatically costs one RF, including days
+when the device was powered off. The current unfinished day costs nothing.
+A protected day preserves the streak number without adding to it or earning
+progress. Missing days reset earning progress. Full reserves do not bank progress. Disabling tracking
+or choosing zero retains the balance, resets earning progress, and leaves
+missed days unprotected. Re-enabling cannot protect those past absences.

@@ -28,9 +28,11 @@
 #include "components/UiAppHelpers.h"
 #include "components/icons/afternoon.h"
 #include "components/icons/book24.h"
+#include "components/icons/completedBookIcons.h"
 #include "components/icons/evening.h"
 #include "components/icons/morning.h"
 #include "components/icons/night.h"
+#include "components/icons/reserveFuelIcons.h"
 #include "components/icons/streak.h"
 #include "fontIds.h"
 
@@ -445,8 +447,8 @@ void formatStreakStat(const GlobalReadingStats* globalStats, char* buf, const si
   snprintf(buf, len, tr(STR_STATS_DAY_STREAK_FORMAT), static_cast<unsigned>(streak));
 }
 
-void drawIconLabel(const GfxRenderer& renderer, const uint8_t* icon, const int iconX, const int centerY,
-                   const char* label, const int maxTextW, const bool inverted = false) {
+int drawIconLabel(const GfxRenderer& renderer, const uint8_t* icon, const int iconX, const int centerY,
+                  const char* label, const int maxTextW, const bool inverted = false) {
   const std::string visibleLabel = renderer.truncatedText(UI_10_FONT_ID, label, maxTextW);
   const int lineH = renderer.getLineHeight(UI_10_FONT_ID);
   if (inverted) {
@@ -456,6 +458,7 @@ void drawIconLabel(const GfxRenderer& renderer, const uint8_t* icon, const int i
   }
   renderer.drawText(UI_10_FONT_ID, iconX + kFooterIconSize + kFooterIconTextGap, centerY - lineH / 2,
                     visibleLabel.c_str(), !inverted);
+  return renderer.getTextWidth(UI_10_FONT_ID, visibleLabel.c_str());
 }
 
 void drawRightAlignedIconLabel(const GfxRenderer& renderer, const uint8_t* icon, const int rightX, const int centerY,
@@ -520,8 +523,10 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
     const int maxTextW = std::max(1, halfW - inset * 2);
     drawLeftAnchoredFooterStat(renderer, coverRect.x, centerY, maxTextW, totalTime,
                                tr(STR_STATS_TOTAL_READING_TIME_LBL_SHORT), inverted);
-    const int rightX = renderer.getScreenWidth() - inset;
-    drawRightAnchoredFooterStat(renderer, rightX, centerY, maxTextW, booksRead, tr(STR_STATS_COMPLETED_LBL), inverted);
+    if (SETTINGS.showBooksReadCounter != 0) {
+      const int rightX = renderer.getScreenWidth() - inset;
+      drawRightAnchoredFooterStat(renderer, rightX, centerY, maxTextW, booksRead, tr(STR_STATS_COMPLETED_LBL), inverted);
+    }
     return;
   }
 
@@ -529,13 +534,48 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
   formatStreakStat(globalStats, streakBuf, sizeof(streakBuf));
 
   const int leftTextW = renderer.getScreenWidth() / 2 - inset - kFooterIconSize - kFooterIconTextGap;
-  drawIconLabel(renderer, StreakIcon, coverRect.x, centerY, streakBuf, leftTextW, inverted);
+  const bool showFuel =
+      SETTINGS.shouldTrackReadingStats() && SETTINGS.reserveFuelCapacity != 0 && globalStats != nullptr;
+  const bool showBooksRead = SETTINGS.showBooksReadCounter != 0 && globalStats != nullptr;
+  constexpr int footerRowGap = 8;
+  constexpr int footerColumnGap = 12;
+  const int rowSpacing = std::max(kFooterIconSize, renderer.getLineHeight(UI_10_FONT_ID)) + footerRowGap;
+  const int streakCenterY = showFuel || showBooksRead ? centerY - rowSpacing / 2 : centerY;
+  drawIconLabel(renderer, StreakIcon, coverRect.x, streakCenterY, streakBuf, std::max(1, leftTextW), inverted);
+  if (showFuel) {
+    ReadingStatsDateTime today;
+    const bool hasDate = getCurrentLocalReadingStatsDateTime(today);
+    const auto fuel = globalStats->reserveFuelView(hasDate ? &today.date : nullptr);
+    char fuelLabel[96];
+    snprintf(fuelLabel, sizeof(fuelLabel), tr(STR_RESERVE_FUEL_BALANCE_FORMAT), static_cast<unsigned>(fuel.balance));
+    const int fuelTextX = coverRect.x + kFooterIconSize + kFooterIconTextGap;
+    const int maxFuelTextW = std::max(1, renderer.getScreenWidth() / 2 - footerColumnGap / 2 - fuelTextX);
+    const std::string visibleFuelLabel = renderer.truncatedText(UI_10_FONT_ID, fuelLabel, maxFuelTextW);
+    const int fuelCenterY = streakCenterY + rowSpacing;
+    drawLucideIcon(renderer, icon_reserve_fuel_24, coverRect.x, fuelCenterY - kFooterIconSize / 2, !inverted);
+    renderer.drawText(UI_10_FONT_ID, fuelTextX, fuelCenterY - renderer.getLineHeight(UI_10_FONT_ID) / 2,
+                      visibleFuelLabel.c_str(), !inverted);
+  }
 
   const char* readerLabel = readerTypeLabel(globalStats);
   const int rightX = renderer.getScreenWidth() - inset - (gpio.deviceIsX3() ? kPairInwardShiftX3 : 0);
   const int maxReaderTextW = std::max(1, renderer.getScreenWidth() / 2 - inset - kFooterIconSize - kFooterIconTextGap);
-  drawRightAlignedIconLabel(renderer, readerTypeIcon(globalStats), rightX, centerY, readerLabel, maxReaderTextW,
+  drawRightAlignedIconLabel(renderer, readerTypeIcon(globalStats), rightX, streakCenterY, readerLabel, maxReaderTextW,
                             inverted);
+  if (showBooksRead) {
+    char booksLabel[96];
+    snprintf(booksLabel, sizeof(booksLabel), "%lu %s", static_cast<unsigned long>(globalStats->completedBooks),
+             tr(STR_STATS_COMPLETED_LBL));
+    const int maxBooksTextW = std::max(1, rightX - renderer.getScreenWidth() / 2 - footerColumnGap / 2 -
+                                            kFooterIconSize - kFooterIconTextGap);
+    const std::string visibleBooksLabel = renderer.truncatedText(UI_10_FONT_ID, booksLabel, maxBooksTextW);
+    const int textX = rightX - renderer.getTextWidth(UI_10_FONT_ID, visibleBooksLabel.c_str());
+    const int booksCenterY = streakCenterY + rowSpacing;
+    drawLucideIcon(renderer, icon_completed_book_24, textX - kFooterIconTextGap - kFooterIconSize,
+                   booksCenterY - kFooterIconSize / 2, !inverted);
+    renderer.drawText(UI_10_FONT_ID, textX, booksCenterY - renderer.getLineHeight(UI_10_FONT_ID) / 2,
+                      visibleBooksLabel.c_str(), !inverted);
+  }
 }
 
 void drawBookText(const GfxRenderer& renderer, const Rect& coverRect, const RecentBook& book,
