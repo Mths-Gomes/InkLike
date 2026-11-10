@@ -2,6 +2,7 @@
 
 ### Added
 
+- Show Reserve fuel capacity and Fuel-earning progress in the device-wide reading stats, with chart spacing matching the per-book screen.
 - Protect reading streaks with device-local Reserve Fuel, with configurable capacity and earning interval.
 
 - Assign a physical-button-only Home/Reader shortcut that returns from nested reader menus directly to the open book, and otherwise returns Home.
@@ -55,6 +56,8 @@
 
 ### Fixed
 
+- Use title capitalization for Reserve Fuel settings and reading stats labels, preserving lowercase on the Dashboard.
+- Hide the Reserve Fuel earning interval setting while Reserve Fuel is off.
 - Keep the Dashboard streak text readable by placing Reserve Fuel on its own row, aligned below the streak icon.
 - File Transfer choices no longer appear preselected when opened on a touch device.
 - EPUB paragraphs now inherit first-line indentation from HTML and body styles while retaining paragraph-level overrides.

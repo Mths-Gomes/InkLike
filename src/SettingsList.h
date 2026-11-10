@@ -1099,7 +1099,9 @@ inline std::vector<SettingInfo> buildSystemReadingStatsSettingsList(const std::v
   settings.push_back(SettingInfo::Submenu(StrId::STR_ALL_TIME_STATS, SettingAction::SystemGlobalStats));
   addSettingByName(settings, allSettings, StrId::STR_IDLE_TIME_THRESHOLD);
   addSettingByName(settings, allSettings, StrId::STR_RESERVE_FUEL_LIMIT);
-  addSettingByName(settings, allSettings, StrId::STR_RESERVE_FUEL_INTERVAL);
+  if (SETTINGS.reserveFuelCapacity != 0) {
+    addSettingByName(settings, allSettings, StrId::STR_RESERVE_FUEL_INTERVAL);
+  }
   return settings;
 }
 
