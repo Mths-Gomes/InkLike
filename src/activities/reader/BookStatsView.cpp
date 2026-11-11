@@ -601,9 +601,8 @@ void renderGlobalStatsPage(GfxRenderer& renderer, const MappedInputManager* mapp
     const int perBookCompactContentHeight =
         headerHeight + layout.topGap + layout.topCardH + layout.cardGap + timeOfDayH + layout.cardGap + dayOfWeekH;
     const int perBookExtraHeight = std::max(0, availableHeight - perBookCompactContentHeight);
-    const int targetGlobalCardH =
-        showFuel ? perBookRtcTopCardHeight(layout, perBookExtraHeight)
-                 : globalRtcCardHeightForPerBookRowSpacing(layout, perBookExtraHeight);
+    const int targetGlobalCardH = showFuel ? perBookRtcTopCardHeight(layout, perBookExtraHeight)
+                                           : globalRtcCardHeightForPerBookRowSpacing(layout, perBookExtraHeight);
     const int extraTopCardHeight = std::min(extraHeight, std::max(0, targetGlobalCardH - baseCardH));
     const int remainingExtraHeight = extraHeight - extraTopCardHeight;
     const int timeOfDayExtraHeight = (remainingExtraHeight * 4) / 11;

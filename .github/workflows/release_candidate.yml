@@ -73,7 +73,7 @@ jobs:
           escaped_version=$(printf '%s\n' "$VERSION" | sed 's/[&|]/\\&/g')
           sed -i "/^\[crossink\]$/,/^\[/s|^version = .*|version = ${escaped_version}|" platformio.ini
 
-      - name: Build CrossInk
+      - name: Build InkLike
         shell: bash
         env:
           CROSSINK_RELEASE_VERSION: "1"
