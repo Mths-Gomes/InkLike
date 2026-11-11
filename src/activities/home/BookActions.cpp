@@ -21,6 +21,7 @@
 #include "activities/reader/BookReadingStats.h"
 #include "activities/reader/BookStatsActivity.h"
 #include "activities/reader/BookStatsTracking.h"
+#include "activities/reader/CompletedBooksStore.h"
 #include "activities/reader/EpubReaderActivity.h"
 #include "activities/reader/GlobalReadingStats.h"
 #include "components/UITheme.h"
@@ -229,6 +230,7 @@ bool toggleBookCompleted(const std::string& fullPath, const std::string& display
   stats.isCompleted = completed;
   const bool trackStats = BookStatsTracking::isEnabled(cachePath);
   if (completed && trackStats && !stats.finishedDateManual) {
+    stats.finishedDate.clear();
     ReadingStatsDateTime now;
     if (getCurrentLocalReadingStatsDateTime(now)) {
       stats.finishedDate = now.date;
@@ -240,6 +242,9 @@ bool toggleBookCompleted(const std::string& fullPath, const std::string& display
     return false;
   }
   if (trackStats) {
+    if (!CompletedBooksStore::update(cachePath, title.empty() ? displayName : title, stats)) {
+      LOG_ERR("BookActions", "Could not update completion history");
+    }
     GlobalReadingStats globalStats = GlobalReadingStats::load();
     if (completed) {
       globalStats.completedBooks++;

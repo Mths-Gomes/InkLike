@@ -614,6 +614,11 @@ bool CrossPointSettings::fromJson(JsonVariantConst doc, bool importingCrossPoint
     this->*(info.valuePtr) = value;
   }
 
+  if (doc["dashboardBookSlot"].isNull()) {
+    dashboardBookSlot = showBooksReadCounter ? BOOK_SLOT_COUNT : BOOK_SLOT_HIDDEN;
+    needsResave = true;
+  }
+
   // Old settings assigned one layout and one long-press mode to both side
   // buttons. Populate only missing new keys so partially upgraded settings
   // keep the user's individual choices.

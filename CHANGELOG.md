@@ -1,3 +1,24 @@
+## [Unreleased]
+
+### Added
+
+- Give each Reader Titles milestone a distinct 24px icon, with the current title kept bold on the single milestone page.
+- Choose Books Read, Reader Title, or Hidden for the Dashboard book slot, with ten lifetime reading titles.
+- Open Reader Titles from the Home menu alongside Reading Stats to view title milestones, progress toward the next title, and recorded book completions.
+- Keep a separate SD-card completion history with book titles and known finish dates for future yearly reading reports; existing completions are imported when opened or viewed in Reading Stats.
+
+### Changed
+
+- Compact completed-book history into single-line entries showing the book title followed by YYYY/MM, while preserving complete finish dates on the SD card.
+- Refine Booklover's heart and give Book Devourer a bitten apple, distinct from the streak flame; show each reader title's matching icon in the Dashboard title slot.
+- Emphasize each milestone's own symbol in Reader Titles icons, and show the required book count before the icon-and-title group.
+- Rename the Dashboard book slot setting to Book Counter Options and place it after the Reserve Fuel settings in Reading Stats.
+
+### Fixed
+
+- Show all ten Reader Titles milestones together on one compact page instead of splitting them across two widely spaced pages.
+- Clarify Reader Titles navigation with Back, Previous, and Next button hints, a fully hidden second hint, and square page indicators instead of the extra Back/More links.
+
 ## [v1.0.0] - 2026-11-10
 
 First InkLike version, based on CrossInk 1.6.1.

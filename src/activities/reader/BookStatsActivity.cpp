@@ -2,7 +2,9 @@
 
 #include <I18n.h>
 
+#include "BookStatsTracking.h"
 #include "BookStatsView.h"
+#include "CompletedBooksStore.h"
 #include "MappedInputManager.h"
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
@@ -81,6 +83,9 @@ void BookStatsActivity::saveStats() {
     return;
   }
   globalStats.save();
+  if (!CompletedBooksStore::update(bookCachePath, bookTitle, stats)) {
+    LOG_ERR("BookStats", "Could not update completion history");
+  }
   refreshAllDevicesStats();
   didChangeStats = false;
 }
@@ -272,6 +277,10 @@ void BookStatsActivity::adjustSelectedDateField(const int delta) {
 
 void BookStatsActivity::onEnter() {
   Activity::onEnter();
+  if (stats.isCompleted && !bookCachePath.empty() && BookStatsTracking::isEnabled(bookCachePath) &&
+      !CompletedBooksStore::update(bookCachePath, bookTitle, stats)) {
+    LOG_ERR("BookStats", "Could not import saved completion history");
+  }
   ignoreInitialBackRelease = mappedInput.isPressed(MappedInputManager::Button::Back);
   ignoreInitialConfirmRelease = mappedInput.isPressed(MappedInputManager::Button::Confirm);
   ignoreInitialPowerRelease = mappedInput.isPressed(MappedInputManager::Button::Power);

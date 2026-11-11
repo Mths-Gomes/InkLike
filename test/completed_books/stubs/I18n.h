@@ -1,0 +1,17 @@
+#pragma once
+enum class StrId {
+  STR_TITLE_FIRST_CHAPTER,
+  STR_TITLE_BOOKLING,
+  STR_TITLE_EXPLORER,
+  STR_TITLE_PAGE_TURNER,
+  STR_TITLE_BOOKLOVER,
+  STR_TITLE_BOOK_DEVOURER,
+  STR_TITLE_BOOKWORM,
+  STR_TITLE_STORYKEEPER,
+  STR_TITLE_PAGE_MASTER,
+  STR_TITLE_LEGEND,
+};
+struct TestI18n {
+  const char* get(StrId) const { return "title"; }
+};
+inline TestI18n I18N;

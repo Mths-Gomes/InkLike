@@ -25,6 +25,7 @@
 #include "../reader/BookStatsActivity.h"
 #include "../reader/BookStatsTracking.h"
 #include "../reader/EpubReaderUtils.h"
+#include "../reader/ReaderTitlesActivity.h"
 #include "BookmarkStore.h"
 #include "ClippingStore.h"
 #include "CrossPointSettings.h"
@@ -59,6 +60,7 @@ enum class HomeMenuAction {
   Library,
   OpdsBrowser,
   ReadingStats,
+  ReaderTitles,
   Bookmarks,
   FileTransfer,
   Settings,
@@ -71,7 +73,7 @@ struct HomeMenuEntry {
 };
 
 struct HomeMenuEntries {
-  static constexpr int kCapacity = 8;
+  static constexpr int kCapacity = 9;
   std::array<HomeMenuEntry, kCapacity> entries{};
   int count = 0;
 
@@ -244,6 +246,9 @@ void appendHomeMenuItems(HomeMenuEntries& items, bool hasOpdsServers, bool hasRe
   if (hasReadingStats) {
     items.push({tr(STR_READING_STATS), Chart, HomeMenuAction::ReadingStats});
   }
+  if (SETTINGS.shouldTrackReadingStats()) {
+    items.push({tr(STR_READER_TITLES), Book, HomeMenuAction::ReaderTitles});
+  }
   if (hasBookmarks || hasClippings) {
     items.push({savedItemsLabel(hasBookmarks, hasClippings), BookmarkIcon, HomeMenuAction::Bookmarks});
   }
@@ -274,6 +279,9 @@ HomeMenuEntries buildMinimalMenuItems(bool hasOpdsServers, bool hasReadingStats,
   }
   if (hasReadingStats) {
     items.push({tr(STR_READING_STATS), Chart, HomeMenuAction::ReadingStats});
+  }
+  if (SETTINGS.shouldTrackReadingStats()) {
+    items.push({tr(STR_READER_TITLES), Book, HomeMenuAction::ReaderTitles});
   }
 
   items.push({tr(STR_FILE_TRANSFER), Transfer, HomeMenuAction::FileTransfer});
@@ -531,7 +539,8 @@ static_assert(HomeActivity::kMaxCachedBooks >= LyraCarouselMetrics::values.homeR
 int HomeActivity::getMenuItemCount() const {
   if (coverGridUi) return static_cast<int>(recentBooks.size()) + (hasOpdsServers ? 5 : 4);
   const auto& metrics = UITheme::getInstance().getMetrics();
-  int count = 4;  // File Browser, Library, File transfer, Settings
+  int count = 4;                                    // File Browser, Library, File transfer, Settings
+  if (SETTINGS.shouldTrackReadingStats()) count++;  // Reader Titles
   if (!metrics.homeContinueReadingInMenu && !recentBooks.empty()) {
     count += getVisibleRecentBookCount();
   } else if (metrics.homeContinueReadingInMenu && !recentBooks.empty()) {
@@ -1486,6 +1495,9 @@ void HomeActivity::loop() {
           case HomeMenuAction::ReadingStats:
             onReadingStatsOpen();
             break;
+          case HomeMenuAction::ReaderTitles:
+            onReaderTitlesOpen();
+            break;
           case HomeMenuAction::Bookmarks:
             onSavedItemsOpen();
             break;
@@ -1730,6 +1742,9 @@ void HomeActivity::loop() {
         break;
       case HomeMenuAction::ReadingStats:
         onReadingStatsOpen();
+        break;
+      case HomeMenuAction::ReaderTitles:
+        onReaderTitlesOpen();
         break;
       case HomeMenuAction::Bookmarks:
         onSavedItemsOpen();
@@ -2349,6 +2364,18 @@ void HomeActivity::onSettingsOpen() { activityManager.goToSettings(); }
 void HomeActivity::onFileTransferOpen() { activityManager.goToFileTransfer(); }
 
 void HomeActivity::onOpdsBrowserOpen() { activityManager.goToBrowser(); }
+
+void HomeActivity::onReaderTitlesOpen() {
+  auto activity = makeUniqueNoThrow<ReaderTitlesActivity>(renderer, mappedInput);
+  if (!activity) {
+    LOG_ERR("HOME", "Could not allocate reader titles screen");
+    return;
+  }
+  startActivityForResult(std::move(activity), [this](const ActivityResult&) {
+    mappedInput.suppressNextConfirmRelease();
+    requestUpdate();
+  });
+}
 
 void HomeActivity::onReadingStatsOpen() {
   if (!SETTINGS.shouldTrackReadingStats()) return;

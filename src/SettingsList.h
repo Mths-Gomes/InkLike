@@ -1098,11 +1098,11 @@ inline std::vector<SettingInfo> buildSystemReadingStatsSettingsList(const std::v
   if (!SETTINGS.shouldTrackReadingStats()) return settings;
   settings.push_back(SettingInfo::Submenu(StrId::STR_ALL_TIME_STATS, SettingAction::SystemGlobalStats));
   addSettingByName(settings, allSettings, StrId::STR_IDLE_TIME_THRESHOLD);
-  addSettingByName(settings, allSettings, StrId::STR_BOOKS_READ_COUNTER);
   addSettingByName(settings, allSettings, StrId::STR_RESERVE_FUEL_LIMIT);
   if (SETTINGS.reserveFuelCapacity != 0) {
     addSettingByName(settings, allSettings, StrId::STR_RESERVE_FUEL_INTERVAL);
   }
+  addSettingByName(settings, allSettings, StrId::STR_DASHBOARD_BOOK_SLOT);
   return settings;
 }
 

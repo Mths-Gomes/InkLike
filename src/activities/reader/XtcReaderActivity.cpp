@@ -17,6 +17,7 @@
 
 #include "BookStatsActivity.h"
 #include "BookStatsTracking.h"
+#include "CompletedBooksStore.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "GlobalActions.h"
@@ -127,6 +128,10 @@ void XtcReaderActivity::onEnter() {
   globalStats = GlobalReadingStats::load();
   bookStatsEnabled = BookStatsTracking::isBookEnabled(xtc->getCachePath());
   statsTrackingActive = SETTINGS.shouldTrackReadingStats() && bookStatsEnabled;
+  if (statsTrackingActive && stats.isCompleted &&
+      !CompletedBooksStore::update(xtc->getCachePath(), xtc->getTitle(), stats)) {
+    LOG_ERR("XTC", "Could not import saved completion history");
+  }
   paceDirty = false;
   pendingStatsCommit = false;
   sessionReadingSeconds = 0;
@@ -808,6 +813,7 @@ void XtcReaderActivity::setBookCompleted(const bool isCompleted) {
 
   stats.isCompleted = isCompleted;
   if (isCompleted && statsTrackingActive && !stats.finishedDateManual) {
+    stats.finishedDate.clear();
     ReadingStatsDateTime now;
     if (getCurrentLocalReadingStatsDateTime(now)) {
       stats.finishedDate = now.date;
@@ -815,6 +821,9 @@ void XtcReaderActivity::setBookCompleted(const bool isCompleted) {
   }
 
   if (stats.save(xtc->getCachePath()) && statsTrackingActive) {
+    if (!CompletedBooksStore::update(xtc->getCachePath(), xtc->getTitle(), stats)) {
+      LOG_ERR("XTC", "Could not update completion history");
+    }
     if (isCompleted) {
       globalStats.completedBooks++;
     } else if (globalStats.completedBooks > 0) {
