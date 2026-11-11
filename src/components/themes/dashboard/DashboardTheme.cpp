@@ -525,7 +525,8 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
                                tr(STR_STATS_TOTAL_READING_TIME_LBL_SHORT), inverted);
     if (SETTINGS.showBooksReadCounter != 0) {
       const int rightX = renderer.getScreenWidth() - inset;
-      drawRightAnchoredFooterStat(renderer, rightX, centerY, maxTextW, booksRead, tr(STR_STATS_COMPLETED_LBL), inverted);
+      drawRightAnchoredFooterStat(renderer, rightX, centerY, maxTextW, booksRead, tr(STR_STATS_COMPLETED_LBL),
+                                  inverted);
     }
     return;
   }
@@ -566,8 +567,8 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
     char booksLabel[96];
     snprintf(booksLabel, sizeof(booksLabel), "%lu %s", static_cast<unsigned long>(globalStats->completedBooks),
              tr(STR_STATS_COMPLETED_LBL));
-    const int maxBooksTextW = std::max(1, rightX - renderer.getScreenWidth() / 2 - footerColumnGap / 2 -
-                                            kFooterIconSize - kFooterIconTextGap);
+    const int maxBooksTextW = std::max(
+        1, rightX - renderer.getScreenWidth() / 2 - footerColumnGap / 2 - kFooterIconSize - kFooterIconTextGap);
     const std::string visibleBooksLabel = renderer.truncatedText(UI_10_FONT_ID, booksLabel, maxBooksTextW);
     const int textX = rightX - renderer.getTextWidth(UI_10_FONT_ID, visibleBooksLabel.c_str());
     const int booksCenterY = streakCenterY + rowSpacing;
