@@ -267,7 +267,12 @@ const std::vector<SettingInfo>& getBaseSettingsList() {
     add(SettingInfo::Toggle(StrId::STR_TRACK_READING_STATS, &CrossPointSettings::trackReadingStats, "trackReadingStats",
                             StrId::STR_CAT_SYSTEM));
     add(SettingInfo::Toggle(StrId::STR_BOOKS_READ_COUNTER, &CrossPointSettings::showBooksReadCounter,
-                            "showBooksReadCounter", StrId::STR_CAT_SYSTEM));
+                            "showBooksReadCounter"));
+    add(SettingInfo::Enum(StrId::STR_DASHBOARD_BOOK_SLOT, &CrossPointSettings::dashboardBookSlot,
+                          {StrId::STR_STATS_COMPLETED_LBL, StrId::STR_READER_TITLE, StrId::STR_BOOK_SLOT_HIDDEN},
+                          "dashboardBookSlot", StrId::STR_CAT_SYSTEM)
+            .withEnumRawValues({CrossPointSettings::BOOK_SLOT_COUNT, CrossPointSettings::BOOK_SLOT_TITLE,
+                                CrossPointSettings::BOOK_SLOT_HIDDEN}));
 
     add(SettingInfo::Enum(StrId::STR_RESERVE_FUEL_LIMIT, &CrossPointSettings::reserveFuelCapacity,
                           {StrId::STR_STATE_OFF, StrId::STR_RF_ONE, StrId::STR_RF_THREE, StrId::STR_RF_FIVE},

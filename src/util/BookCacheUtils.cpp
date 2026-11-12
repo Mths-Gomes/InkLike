@@ -79,15 +79,23 @@ const PreservedCacheFile* preservedFilesForPath(const std::string& path, size_t&
   return nullptr;
 }
 
+// Keep interrupted-save recovery files with their canonical BIN. They may be
+// the only surviving reading record when a cache clear follows a power loss.
+size_t statsBaseNameLength(const char* name) {
+  size_t length = strlen(name);
+  if (length > 4 && (strcmp(name + length - 4, ".bak") == 0 || strcmp(name + length - 4, ".tmp") == 0)) length -= 4;
+  return length;
+}
+
 bool isStatsFileName(const char* name) {
   if (!name) {
     return false;
   }
-  const size_t nameLen = strlen(name);
+  const size_t nameLen = statsBaseNameLength(name);
   constexpr size_t prefixLen = std::size(STATS_PREFIX) - 1;
   constexpr size_t suffixLen = std::size(STATS_SUFFIX) - 1;
   return nameLen >= prefixLen + suffixLen && strncmp(name, STATS_PREFIX, prefixLen) == 0 &&
-         strcmp(name + nameLen - suffixLen, STATS_SUFFIX) == 0;
+         strncmp(name + nameLen - suffixLen, STATS_SUFFIX, suffixLen) == 0;
 }
 
 int statsFileVersion(const char* name) {
@@ -98,9 +106,9 @@ int statsFileVersion(const char* name) {
   constexpr char VERSION_PREFIX[] = "stats_v";
   constexpr size_t versionPrefixLen = std::size(VERSION_PREFIX) - 1;
   constexpr size_t suffixLen = std::size(STATS_SUFFIX) - 1;
-  const size_t nameLen = strlen(name);
+  const size_t nameLen = statsBaseNameLength(name);
   if (nameLen <= versionPrefixLen + suffixLen || strncmp(name, VERSION_PREFIX, versionPrefixLen) != 0 ||
-      strcmp(name + nameLen - suffixLen, STATS_SUFFIX) != 0) {
+      strncmp(name + nameLen - suffixLen, STATS_SUFFIX, suffixLen) != 0) {
     return -1;
   }
 

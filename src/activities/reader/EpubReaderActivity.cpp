@@ -31,6 +31,7 @@
 #include "BookStatsTracking.h"
 #include "ClipSelectionActivity.h"
 #include "ClippingStore.h"
+#include "CompletedBooksStore.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "DictionaryWordSelectActivity.h"
@@ -2437,6 +2438,10 @@ void EpubReaderActivity::onEnter() {
   stats = BookReadingStats::load(epub->getCachePath());
   bookStatsEnabled = BookStatsTracking::isBookEnabled(epub->getCachePath());
   statsTrackingActive = SETTINGS.shouldTrackReadingStats() && bookStatsEnabled;
+  if (statsTrackingActive && stats.isCompleted &&
+      !CompletedBooksStore::update(epub->getCachePath(), epub->getTitle(), stats)) {
+    LOG_ERR("ERS", "Could not import saved completion history");
+  }
   paceDirty = false;
   pendingStatsCommit = false;
 #if defined(ENABLE_SERIAL_LOG) && LOG_LEVEL >= 2
@@ -5622,6 +5627,7 @@ void EpubReaderActivity::setBookCompleted(bool isCompleted) {
 
   stats.isCompleted = isCompleted;
   if (isCompleted && statsTrackingActive && !stats.finishedDateManual) {
+    stats.finishedDate.clear();
     ReadingStatsDateTime now;
     if (getCurrentLocalReadingStatsDateTime(now)) {
       stats.finishedDate = now.date;
@@ -5645,6 +5651,9 @@ void EpubReaderActivity::setBookCompleted(bool isCompleted) {
   refreshCachedTimeLeftEstimate();
   if (!stats.save(epub->getCachePath())) return;
   if (statsTrackingActive) {
+    if (!CompletedBooksStore::update(epub->getCachePath(), epub->getTitle(), stats)) {
+      LOG_ERR("ERS", "Could not update completion history");
+    }
     if (isCompleted) {
       globalStats.completedBooks++;
     } else if (globalStats.completedBooks > 0) {

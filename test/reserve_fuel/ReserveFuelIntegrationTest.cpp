@@ -147,10 +147,69 @@ void calendarBoundaryAndUnavailableClock() {
 }
 }  // namespace
 
+void historyCounterTransactions() {
+  constexpr char primary[] = "/.crosspoint/global_stats.bin";
+  constexpr char before[] = "/.crosspoint/global_stats.history-before.bin";
+  constexpr char after[] = "/.crosspoint/global_stats.history-after.bin";
+  auto prepare = [&] {
+    auto stats = fresh();
+    stats.completedBooks = 10;
+    stats.totalSessions = 20;
+    stats.totalReadingSeconds = 900;
+    stats.save();
+  };
+  prepare();
+  CHECK(GlobalReadingStats::commitHistoryRemoval());
+  auto stats = GlobalReadingStats::load();
+  CHECK(stats.completedBooks == 9 && stats.totalSessions == 20 && stats.totalReadingSeconds == 900);
+  CHECK(GlobalReadingStats::commitHistoryRemoval());
+  CHECK(GlobalReadingStats::load().completedBooks == 9);
+  ++stats.completedBooks;
+  ++stats.totalSessions;
+  stats.save();
+  CHECK(GlobalReadingStats::commitHistoryRemoval());
+  CHECK(GlobalReadingStats::load().completedBooks == 10);
+  CHECK(GlobalReadingStats::clearHistoryRemovalReceipt());
+
+  prepare();
+  Storage.failNextRenameFrom(after);
+  CHECK(!GlobalReadingStats::commitHistoryRemoval());
+  CHECK(Storage.exists(before) && Storage.exists(after) && !Storage.exists(primary));
+  CHECK(GlobalReadingStats::load().completedBooks == 9);  // Recovery publishes staged BIN before loading.
+  CHECK(GlobalReadingStats::commitHistoryRemoval());
+  CHECK(GlobalReadingStats::load().completedBooks == 9);
+  CHECK(GlobalReadingStats::clearHistoryRemovalReceipt());
+
+  prepare();
+  Storage.failNextRenameFrom(primary);
+  CHECK(!GlobalReadingStats::commitHistoryRemoval());
+  stats = GlobalReadingStats::load();
+  ++stats.completedBooks;
+  stats.save();
+  CHECK(GlobalReadingStats::commitHistoryRemoval());
+  CHECK(GlobalReadingStats::load().completedBooks == 10);  // Uses latest totals before staging.
+  Storage.failNextRemove(before);
+  CHECK(!GlobalReadingStats::clearHistoryRemovalReceipt());
+  CHECK(GlobalReadingStats::commitHistoryRemoval());
+  CHECK(GlobalReadingStats::load().completedBooks == 10);
+  CHECK(GlobalReadingStats::clearHistoryRemovalReceipt());
+
+  stats = fresh();
+  stats.save();
+  CHECK(GlobalReadingStats::commitHistoryRemoval());
+  CHECK(GlobalReadingStats::load().completedBooks == 0);
+  FsFile file;
+  CHECK(Storage.openFileForRead("TEST", primary, file));
+  CHECK(file.fileSize() == GlobalReadingStats::CURRENT_FILE_SIZE);
+  file.close();
+  CHECK(GlobalReadingStats::clearHistoryRemovalReceipt());
+}
+
 int main() {
   persistedStreakAndWireFormat();
   completionAcrossMidnight();
   policyChangesAndReset();
   calendarBoundaryAndUnavailableClock();
+  historyCounterTransactions();
   std::puts("Reserve Fuel integration: all checks passed");
 }

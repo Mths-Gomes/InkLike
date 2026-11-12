@@ -21,6 +21,7 @@
 #include "activities/reader/BookReadingStats.h"
 #include "activities/reader/BookStatsActivity.h"
 #include "activities/reader/BookStatsTracking.h"
+#include "activities/reader/CompletedBooksStore.h"
 #include "activities/reader/EpubReaderActivity.h"
 #include "activities/reader/GlobalReadingStats.h"
 #include "components/UITheme.h"
@@ -89,7 +90,10 @@ bool canSendNearby(const std::string& path) {
 
 void clearFileMetadata(const std::string& fullPath) {
   if (FsHelpers::hasEpubExtension(fullPath)) {
-    Epub(fullPath, "/.crosspoint").clearCache();
+    // The book may disappear, but its reading history still links to this cache ID.
+    if (!clearBookCacheDirectoryPreservingStats(bookStatsCachePath(fullPath))) {
+      LOG_ERR("BookActions", "Could not clear deleted book cache while preserving stats: %s", fullPath.c_str());
+    }
     BookmarkStore::deleteForFilePath(fullPath, "epub");
     ClippingStore::deleteForFilePath(fullPath, "epub");
   } else if (FsHelpers::hasXtcExtension(fullPath)) {
@@ -229,6 +233,7 @@ bool toggleBookCompleted(const std::string& fullPath, const std::string& display
   stats.isCompleted = completed;
   const bool trackStats = BookStatsTracking::isEnabled(cachePath);
   if (completed && trackStats && !stats.finishedDateManual) {
+    stats.finishedDate.clear();
     ReadingStatsDateTime now;
     if (getCurrentLocalReadingStatsDateTime(now)) {
       stats.finishedDate = now.date;
@@ -240,6 +245,9 @@ bool toggleBookCompleted(const std::string& fullPath, const std::string& display
     return false;
   }
   if (trackStats) {
+    if (!CompletedBooksStore::update(cachePath, title.empty() ? displayName : title, stats)) {
+      LOG_ERR("BookActions", "Could not update completion history");
+    }
     GlobalReadingStats globalStats = GlobalReadingStats::load();
     if (completed) {
       globalStats.completedBooks++;

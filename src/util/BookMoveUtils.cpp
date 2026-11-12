@@ -16,6 +16,7 @@
 #include "ClippingStore.h"
 #include "CrossPointState.h"
 #include "RecentBooksStore.h"
+#include "activities/reader/CompletedBooksStore.h"
 
 namespace {
 constexpr char READ_FOLDER[] = "/Read";
@@ -279,6 +280,10 @@ RenameMigrationResult migrateRenamedBookState(const std::string& oldPath, const 
 
   commitMetadata();
 
+  if (!CompletedBooksStore::migrate(oldCachePath, newCachePath)) {
+    LOG_ERR("BookMove", "Could not migrate completion history");
+  }
+
   return RenameMigrationResult::Success;
 }
 
@@ -288,6 +293,9 @@ bool migrateMovedEpubState(const std::string& oldPath, const std::string& newPat
   bool ok = true;
 
   const std::string newCachePath = Epub::cachePathForFilePath(newPath, "/.crosspoint");
+  if (!CompletedBooksStore::migrate(oldCachePath, newCachePath)) {
+    LOG_ERR("BookMove", "Could not migrate completion history");
+  }
   if (!oldCachePath.empty() && Storage.exists(oldCachePath.c_str())) {
     if (!Storage.rename(oldCachePath.c_str(), newCachePath.c_str())) {
       LOG_ERR("BookMove", "Failed to rename cache dir %s -> %s (non-fatal)", oldCachePath.c_str(),

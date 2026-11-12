@@ -26,6 +26,9 @@ struct BookReadingStats {
   // default-constructed stats if no compatible file exists.
   static BookReadingStats load(const std::string& cachePath);
 
+  // Unlike load(), distinguishes missing/incompatible data from valid zero stats.
+  static bool tryLoad(const std::string& cachePath, BookReadingStats& stats);
+
   // Saves stats to cachePath/stats_v5.bin through recoverable .tmp/.bak files.
   // Returns false if the new stats file could not be published.
   bool save(const std::string& cachePath) const;
