@@ -7,6 +7,15 @@
 int main() {
   char date[32];
   I18N.setLanguage(Language::EN);
+  assert(formatMonthYear(date, sizeof(date), 2026, 11));
+  assert(std::strcmp(date, "Nov/2026") == 0);
+  I18N.setLanguage(Language::PT);
+  assert(formatMonthYear(date, sizeof(date), 2026, 11));
+  assert(std::strcmp(date, "nov/2026") == 0);
+  assert(!formatMonthYear(date, 4, 2026, 11));
+  assert(!formatMonthYear(date, sizeof(date), 2026, 0));
+  assert(!formatMonthYear(date, sizeof(date), 2026, 13));
+  I18N.setLanguage(Language::EN);
   assert(formatDateParts(date, sizeof(date), 2026, 10, 3, 0));
   assert(std::strcmp(date, "Oct 03, 2026") == 0);
   I18N.setLanguage(Language::DE);
@@ -28,6 +37,9 @@ int main() {
   for (unsigned language = 0; language < static_cast<unsigned>(Language::_COUNT); ++language) {
     I18N.setLanguage(static_cast<Language>(language));
     for (unsigned month = 1; month <= 12; ++month) {
+      assert(formatMonthYear(date, sizeof(date), 2026, month));
+      assert(std::strstr(date, "???") == nullptr);
+      assert(std::strstr(date, "/2026") != nullptr);
       for (unsigned format = 0; format <= 8; ++format) {
         assert(formatDateParts(date, sizeof(date), 2026, month, 28, format));
         assert(std::strstr(date, "???") == nullptr);

@@ -7,10 +7,12 @@ InkLike keeps the reading experience simple: open a book, make the page comforta
 ## Highlights
 
 - **Reading stats:** reading time, sessions, pages turned, streaks, completed books, and time-of-day and day-of-week charts.
+- **Reader Stats:** a reader profile with ten reading titles, a progress bar toward the next title, and a compact milestone reference with distinct icons.
+- **Finished-book history:** browse recorded completions with localized month/year dates and open each book's reading stats, even after its file has been deleted. Individual history deletion updates the completed-books total and current title after confirmation.
 - **Reserve Fuel:** earn reserves through consecutive reading days and spend them automatically to protect a streak after a missed day. Choose a limit of 1, 3, or 5 reserves and an earning interval of 3, 7, 15, or 30 days, or turn it off.
 - **A clearer Dashboard:** separate rows for streak and reader type, followed by Reserve Fuel and Books Read, with custom fuel-can and open-book icons.
 - **Fuel details in Reading Stats:** see your available reserves, capacity, and progress toward earning the next one. The all-books charts use the same spacing as the per-book screen.
-- **An independent Books Read Counter:** show or hide the counter on both the Dashboard and Reading Stats, without changing Reserve Fuel or deleting saved totals.
+- **Dashboard book slot:** choose Books Read, your Reader Title with its icon, or Hidden in Book Counter Options. The Reading Stats counter retains its independent visibility setting.
 - **Language support:** the new Reserve Fuel and counter labels are translated into all 28 supported interface languages.
 - **Comfortable typography:** built-in Lexend Deca and Bitter fonts, SD-card fonts, and configurable size, spacing, and margins.
 - **Reading conveniences:** bookmarks, clippings, a dictionary, Focus Reading, Guide Dots, and customizable button actions.
@@ -41,7 +43,7 @@ For a device already running compatible firmware:
 3. Open **Settings > System > SD Card Firmware Update** and select the file.
 4. After restarting, check that System settings show **InkLike** and the expected version.
 
-InkLike starts its own version sequence at **1.0.0**. For the first transition from the inherited 1.6.1 firmware, use the SD-card updater: its online updater considers 1.0.0 an older version. Subsequent InkLike update checks use this repository's releases.
+The current release is **1.1.0**. InkLike uses its own version sequence, beginning at 1.0.0. For the first transition from the inherited 1.6.1 firmware, use the SD-card updater: its online updater considers these InkLike versions older. Subsequent InkLike update checks use this repository's releases.
 
 Existing SD-card paths, including `.crosspoint` and the settings filename, are retained so the branding change does not reset preferences, progress, or reading stats.
 

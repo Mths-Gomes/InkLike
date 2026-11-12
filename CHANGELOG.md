@@ -1,3 +1,27 @@
+## [Unreleased]
+
+## [v1.1.0] - 2026-11-12
+
+### Added
+
+- Reader Stats in the Home menu, with ten reading titles, distinct milestone icons, and progress toward the next title. In Brazilian Portuguese, the screen is named Status do leitor.
+- A recorded finished-book history with localized month/year dates. Open any entry to view its reading statistics, even after deleting the book file.
+- Per-book history deletion with confirmation: remove the entry and its individual statistics, subtract the completed book from the local total, and recalculate the current reader title. The action also works when the book or statistics are missing.
+- Recovery for interrupted history deletion, preventing repeated counter deductions and accidental restoration of deleted data.
+
+### Changed
+
+- Choose Books Read, Reader Title with its icon, or Hidden for the Dashboard book slot. Book Counter Options appears after the Reserve Fuel options in Reading Stats settings.
+- Reader Stats uses a single overview with the current title, Finished Books, and next-title progress. Up/Down and the side buttons navigate; Open enters a reference screen or book details.
+- Finished-book selection wraps between the first and last book, retains its position when returning from details, and shows compact page squares with continuation dots for longer lists.
+- Keep all title milestones together, with the current one highlighted. Use larger title icons on the overview, regular-weight overview and book-list text, and smaller secondary text.
+
+### Fixed
+
+- Preserve per-book statistics and interrupted-save recovery files when clearing caches or deleting a book from the device.
+- Show a useful unavailable-statistics screen with access to deletion instead of displaying empty statistics for a missing record.
+- Clarify the book Options menu with action arrows and a deletion warning that separates the book title without repeating the action.
+
 ## [v1.0.0] - 2026-11-10
 
 First InkLike version, based on CrossInk 1.6.1.

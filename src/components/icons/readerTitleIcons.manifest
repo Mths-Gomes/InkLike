@@ -1,0 +1,12 @@
+# Custom Reader Titles icons. Regenerate with:
+# python scripts/generate_icons.py --library crossink --manifest src/components/icons/readerTitleIcons.manifest --sizes 24,32 --out src/components/icons/readerTitleIcons.h
+title-first-chapter = title-first-chapter
+title-bookling = title-bookling
+title-explorer = title-explorer
+title-page-turner = title-page-turner
+title-booklover = title-booklover
+title-book-devourer = title-book-devourer
+title-bookworm = title-bookworm
+title-storykeeper = title-storykeeper
+title-page-master = title-page-master
+title-legend = title-legend

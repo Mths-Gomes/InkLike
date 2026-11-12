@@ -45,6 +45,30 @@ TEST_F(BookCacheUtilsTest, ClearsDerivedFilesWhileKeepingReadingState) {
   EXPECT_EQ(fake::directoryEntriesByPath[cachePath], 0u);
 }
 
+TEST_F(BookCacheUtilsTest, DeletedBookCacheRetainsStatisticsAndRecoveryFiles) {
+  fake::add(cachePath + "/stats_v5.bin.bak", "backup");
+  fake::add(cachePath + "/stats_v5.bin.tmp", "pending");
+  ASSERT_TRUE(clearBookCacheDirectoryPreservingStats(cachePath));
+  for (const char* name : {"stats_v5.bin", "stats_v5.bin.bak", "stats_v5.bin.tmp"}) {
+    EXPECT_TRUE(Storage.exists((cachePath + "/" + name).c_str()));
+  }
+  EXPECT_FALSE(Storage.exists((cachePath + "/book.bin").c_str()));
+  EXPECT_FALSE(Storage.exists((cachePath + "/progress.bin").c_str()));
+  ASSERT_TRUE(clearBookCacheDirectoryPreservingStats(cachePath));
+  EXPECT_TRUE(Storage.exists((cachePath + "/stats_v5.bin").c_str()));
+}
+
+TEST_F(BookCacheUtilsTest, CacheClearKeepsLoneStatsBackupAndRecoversInterruptedPreservation) {
+  fake::files.erase(cachePath + "/stats_v5.bin");
+  fake::add(cachePath + "/stats_v5.bin.bak", "only surviving stats");
+  fake::failRenameToPath = cachePath + "/stats_v5.bin.bak";
+  ASSERT_FALSE(clearBookCacheDirectoryPreservingStats(cachePath));
+  ASSERT_TRUE(Storage.exists((cachePath + ".clear_preserve_stats_v5.bin.bak").c_str()));
+  ASSERT_TRUE(clearBookCacheDirectoryPreservingStats(cachePath));
+  EXPECT_TRUE(Storage.exists((cachePath + "/stats_v5.bin.bak").c_str()));
+  EXPECT_FALSE(Storage.exists((cachePath + ".clear_preserve_stats_pending").c_str()));
+}
+
 TEST_F(BookCacheUtilsTest, RetryRecoversStatsAfterFailedRestore) {
   fake::failRenameToPath = cachePath + "/stats_v5.bin";
   ASSERT_FALSE(clearBookCachePreservingUserState("/a.epub"));

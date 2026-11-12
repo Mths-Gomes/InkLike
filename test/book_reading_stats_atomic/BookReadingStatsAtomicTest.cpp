@@ -21,6 +21,35 @@ class BookReadingStatsAtomicTest : public testing::Test {
   void SetUp() override { Storage.reset(); }
 };
 
+TEST_F(BookReadingStatsAtomicTest, DistinguishesMissingAndCorruptFromValidZeroStatistics) {
+  BookReadingStats stats = statsWithSeconds(99);
+  EXPECT_FALSE(BookReadingStats::tryLoad(CACHE_PATH, stats));
+  EXPECT_EQ(stats.totalReadingSeconds, 0U);
+  ASSERT_TRUE(BookReadingStats{}.save(CACHE_PATH));
+  EXPECT_TRUE(BookReadingStats::tryLoad(CACHE_PATH, stats));
+  EXPECT_EQ(stats.totalReadingSeconds, 0U);
+  FsFile file;
+  ASSERT_TRUE(Storage.openFileForWrite("TEST", statsPath, file));
+  const uint8_t corrupt[] = {5, 1, 2};
+  file.write(corrupt, sizeof(corrupt));
+  file.close();
+  EXPECT_FALSE(BookReadingStats::tryLoad(CACHE_PATH, stats));
+}
+
+TEST_F(BookReadingStatsAtomicTest, BrowsingRetainsSessionsAndReadingTime) {
+  auto original = statsWithSeconds(2345);
+  original.sessionCount = 17;
+  original.isCompleted = true;
+  ASSERT_TRUE(original.save(CACHE_PATH));
+  BookReadingStats loaded;
+  ASSERT_TRUE(BookReadingStats::tryLoad(CACHE_PATH, loaded));
+  EXPECT_EQ(loaded.sessionCount, 17U);
+  EXPECT_EQ(loaded.totalReadingSeconds, 2345U);
+  const auto again = BookReadingStats::load(CACHE_PATH);
+  EXPECT_EQ(again.sessionCount, 17U);
+  EXPECT_EQ(again.totalReadingSeconds, 2345U);
+}
+
 TEST_F(BookReadingStatsAtomicTest, RestoresOriginalWhenReplacementRenameFails) {
   statsWithSeconds(123).save(CACHE_PATH);
   Storage.failNextRenameFrom(statsPath + ".tmp");

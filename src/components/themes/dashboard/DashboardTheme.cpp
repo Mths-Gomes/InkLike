@@ -22,6 +22,7 @@
 #include "activities/reader/BookReadingStats.h"
 #include "activities/reader/BookStatsTracking.h"
 #include "activities/reader/GlobalReadingStats.h"
+#include "activities/reader/ReaderTitles.h"
 #include "activities/reader/ReadingStatsUtils.h"
 #include "components/TouchRegistry.h"
 #include "components/UITheme.h"
@@ -523,10 +524,21 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
     const int maxTextW = std::max(1, halfW - inset * 2);
     drawLeftAnchoredFooterStat(renderer, coverRect.x, centerY, maxTextW, totalTime,
                                tr(STR_STATS_TOTAL_READING_TIME_LBL_SHORT), inverted);
-    if (SETTINGS.showBooksReadCounter != 0) {
+    if (SETTINGS.dashboardBookSlot != CrossPointSettings::BOOK_SLOT_HIDDEN) {
       const int rightX = renderer.getScreenWidth() - inset;
-      drawRightAnchoredFooterStat(renderer, rightX, centerY, maxTextW, booksRead, tr(STR_STATS_COMPLETED_LBL),
-                                  inverted);
+      const bool title = SETTINGS.dashboardBookSlot == CrossPointSettings::BOOK_SLOT_TITLE;
+      if (title) {
+        const int titleTextW = std::max(1, maxTextW - kFooterIconSize - kFooterIconTextGap);
+        const auto visible = renderer.truncatedText(UI_10_FONT_ID, ReaderTitles::nameFor(completedBooks), titleTextW);
+        const int textX = rightX - renderer.getTextWidth(UI_10_FONT_ID, visible.c_str());
+        drawLucideIcon(renderer, ReaderTitles::iconFor(completedBooks), textX - kFooterIconTextGap - kFooterIconSize,
+                       centerY - kFooterIconSize / 2, !inverted);
+        renderer.drawText(UI_10_FONT_ID, textX, centerY - renderer.getLineHeight(UI_10_FONT_ID) / 2, visible.c_str(),
+                          !inverted);
+      } else {
+        drawRightAnchoredFooterStat(renderer, rightX, centerY, maxTextW, booksRead, tr(STR_STATS_COMPLETED_LBL),
+                                    inverted);
+      }
     }
     return;
   }
@@ -537,7 +549,8 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
   const int leftTextW = renderer.getScreenWidth() / 2 - inset - kFooterIconSize - kFooterIconTextGap;
   const bool showFuel =
       SETTINGS.shouldTrackReadingStats() && SETTINGS.reserveFuelCapacity != 0 && globalStats != nullptr;
-  const bool showBooksRead = SETTINGS.showBooksReadCounter != 0 && globalStats != nullptr;
+  const bool showBooksRead =
+      SETTINGS.dashboardBookSlot != CrossPointSettings::BOOK_SLOT_HIDDEN && globalStats != nullptr;
   constexpr int footerRowGap = 8;
   constexpr int footerColumnGap = 12;
   const int rowSpacing = std::max(kFooterIconSize, renderer.getLineHeight(UI_10_FONT_ID)) + footerRowGap;
@@ -565,14 +578,20 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
                             inverted);
   if (showBooksRead) {
     char booksLabel[96];
-    snprintf(booksLabel, sizeof(booksLabel), "%lu %s", static_cast<unsigned long>(globalStats->completedBooks),
-             tr(STR_STATS_COMPLETED_LBL));
+    const bool showTitle = SETTINGS.dashboardBookSlot == CrossPointSettings::BOOK_SLOT_TITLE;
+    if (showTitle) {
+      snprintf(booksLabel, sizeof(booksLabel), "%s", ReaderTitles::nameFor(globalStats->completedBooks));
+    } else {
+      snprintf(booksLabel, sizeof(booksLabel), "%lu %s", static_cast<unsigned long>(globalStats->completedBooks),
+               tr(STR_STATS_COMPLETED_LBL));
+    }
     const int maxBooksTextW = std::max(
         1, rightX - renderer.getScreenWidth() / 2 - footerColumnGap / 2 - kFooterIconSize - kFooterIconTextGap);
     const std::string visibleBooksLabel = renderer.truncatedText(UI_10_FONT_ID, booksLabel, maxBooksTextW);
     const int textX = rightX - renderer.getTextWidth(UI_10_FONT_ID, visibleBooksLabel.c_str());
     const int booksCenterY = streakCenterY + rowSpacing;
-    drawLucideIcon(renderer, icon_completed_book_24, textX - kFooterIconTextGap - kFooterIconSize,
+    const auto& booksIcon = showTitle ? ReaderTitles::iconFor(globalStats->completedBooks) : icon_completed_book_24;
+    drawLucideIcon(renderer, booksIcon, textX - kFooterIconTextGap - kFooterIconSize,
                    booksCenterY - kFooterIconSize / 2, !inverted);
     renderer.drawText(UI_10_FONT_ID, textX, booksCenterY - renderer.getLineHeight(UI_10_FONT_ID) / 2,
                       visibleBooksLabel.c_str(), !inverted);

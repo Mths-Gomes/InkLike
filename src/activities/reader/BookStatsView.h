@@ -23,7 +23,7 @@ constexpr int dateField(const int index) { return DateFieldBase + index; }
 void renderPerBookStatsPage(GfxRenderer& renderer, const MappedInputManager* mappedInput, const std::string& bookTitle,
                             const BookReadingStats& stats, float progressPercent, bool hasEstimatedTimeLeft,
                             uint32_t estimatedTimeLeftSeconds, bool showButtonHints, bool showEditButton,
-                            bool showMoreButton);
+                            bool showMoreButton, const char* confirmLabel = nullptr);
 
 void renderGlobalStatsPage(GfxRenderer& renderer, const MappedInputManager* mappedInput, const char* screenTitle,
                            const GlobalReadingStats& stats, bool showButtonHints, bool showMoreButton);
@@ -32,7 +32,7 @@ void renderNoRtcCombinedStatsPage(GfxRenderer& renderer, const MappedInputManage
                                   const std::string& bookTitle, const BookReadingStats& bookStats,
                                   float progressPercent, bool hasEstimatedTimeLeft, uint32_t estimatedTimeLeftSeconds,
                                   const GlobalReadingStats& deviceStats, const GlobalReadingStats* allDevicesStats,
-                                  bool showButtonHints);
+                                  bool showButtonHints, const char* confirmLabel = nullptr);
 
 void renderEditBookDatesPage(GfxRenderer& renderer, const MappedInputManager* mappedInput, const std::string& bookTitle,
                              const BookReadingStats& stats, int selectedField, bool showButtonHints);
