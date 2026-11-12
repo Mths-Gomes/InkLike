@@ -2371,8 +2371,17 @@ void HomeActivity::onReaderTitlesOpen() {
     LOG_ERR("HOME", "Could not allocate reader titles screen");
     return;
   }
-  startActivityForResult(std::move(activity), [this](const ActivityResult&) {
+  startActivityForResult(std::move(activity), [this](const ActivityResult& result) {
     mappedInput.suppressNextConfirmRelease();
+    const auto* statsResult = std::get_if<ReadingStatsResult>(&result.data);
+    if (statsResult && statsResult->changed) {
+      globalStats = GlobalReadingStats::load();
+      globalStats.refreshReserveFuel();
+      showAllDevicesStats = GlobalReadingStats::hasSyncedStats();
+      allDevicesGlobalStats = showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;
+      bookStatsCached = false;
+      updateHighlightedBookContext();
+    }
     requestUpdate();
   });
 }

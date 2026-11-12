@@ -1,13 +1,18 @@
 #include "BookStatsActivity.h"
 
 #include <I18n.h>
+#include <Memory.h>
 
 #include "BookStatsTracking.h"
 #include "BookStatsView.h"
 #include "CompletedBooksStore.h"
 #include "MappedInputManager.h"
+#include "activities/util/ConfirmationActivity.h"
+#include "activities/util/OptionSelectionActivity.h"
+#include "components/CompactHeader.h"
 #include "components/TouchHeaderBackButton.h"
 #include "components/UITheme.h"
+#include "fontIds.h"
 #include "util/InputReleaseGuard.h"
 
 namespace {
@@ -277,7 +282,8 @@ void BookStatsActivity::adjustSelectedDateField(const int delta) {
 
 void BookStatsActivity::onEnter() {
   Activity::onEnter();
-  if (stats.isCompleted && !bookCachePath.empty() && BookStatsTracking::isEnabled(bookCachePath) &&
+  if (historyActions) historyDeletionFailed = CompletedBooksStore::deletionPendingFor(bookCachePath);
+  if (!historyActions && stats.isCompleted && !bookCachePath.empty() && BookStatsTracking::isEnabled(bookCachePath) &&
       !CompletedBooksStore::update(bookCachePath, bookTitle, stats)) {
     LOG_ERR("BookStats", "Could not import saved completion history");
   }
@@ -288,6 +294,77 @@ void BookStatsActivity::onEnter() {
   previousOrientation = renderer.getOrientation();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
   requestUpdate();
+}
+
+void BookStatsActivity::resetReleaseGuards() {
+  ignoreInitialBackRelease = mappedInput.isPressed(MappedInputManager::Button::Back);
+  ignoreInitialConfirmRelease = mappedInput.isPressed(MappedInputManager::Button::Confirm);
+  ignoreInitialPowerRelease = mappedInput.isPressed(MappedInputManager::Button::Power);
+}
+
+void BookStatsActivity::showBookOptions() {
+  // Cold-path menu: two localized labels at most, using the existing SDK menu.
+  std::vector<std::string> options;
+  options.reserve(2);
+  const bool editDates = hasEditableBook();
+  if (editDates) options.emplace_back(tr(STR_BOOK_EDIT_DATES));
+  options.emplace_back(tr(STR_BOOK_DELETE_HISTORY));
+  auto activity = makeUniqueNoThrow<OptionSelectionActivity>(
+      renderer, mappedInput, "BookHistoryOptions", StrId::STR_BOOK_OPTIONS, std::move(options), 0, false, true);
+  if (!activity) {
+    LOG_ERR("BookStats", "Could not allocate history options");
+    return;
+  }
+  activity->showAsActionMenu();
+  startActivityForResult(std::move(activity), [this, editDates](const ActivityResult& result) {
+    resetReleaseGuards();
+    if (result.isCancelled) return;
+    const auto* selected = std::get_if<OptionSelectionResult>(&result.data);
+    if (!selected) return;
+    if (editDates && selected->index == 0)
+      beginDateEditing();
+    else
+      confirmHistoryDeletion();
+  });
+}
+
+void BookStatsActivity::confirmHistoryDeletion() {
+  // The existing confirmation owns its text until it closes (one book title,
+  // bounded to 512 bytes by the history store, plus a localized explanation).
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const int titleWidth = std::max(1, renderer.getScreenWidth() - metrics.optionPopupDialogSideMargin * 2 -
+                                         metrics.optionPopupInnerPadding * 2 -
+                                         renderer.getTextWidth(UI_12_FONT_ID, "\"\":", EpdFontFamily::BOLD));
+  const auto visibleTitle = renderer.truncatedText(UI_12_FONT_ID, bookTitle.c_str(), titleWidth, EpdFontFamily::BOLD);
+  // ConfirmationActivity inserts a literal space between heading and body.
+  // Its popup wraps spaces, so do not rely on newlines as text separators.
+  const std::string heading = "\"" + visibleTitle + "\":";
+  auto confirmation = makeUniqueNoThrow<ConfirmationActivity>(renderer, mappedInput, heading,
+                                                              tr(STR_BOOK_DELETE_HISTORY_CONFIRM), true);
+  if (!confirmation) {
+    LOG_ERR("BookStats", "Could not allocate history confirmation");
+    return;
+  }
+  startActivityForResult(std::move(confirmation), [this](const ActivityResult& result) {
+    resetReleaseGuards();
+    if (result.isCancelled) return;
+    RenderLock lock(*this);
+    // Never let onExit() or a saved date-edit snapshot restore deleted BIN data.
+    didChangeStats = false;
+    dateEditSnapshotValid = false;
+    const bool removed = CompletedBooksStore::eraseHistory(bookCachePath);
+    setResult(ReadingStatsResult{true});
+    if (removed) {
+      finish();
+      return;
+    }
+    LOG_ERR("BookStats", "History deletion incomplete; journal retained for retry");
+    historyDeletionFailed = true;
+    statsAvailable = BookReadingStats::tryLoad(bookCachePath, stats);
+    globalStats = GlobalReadingStats::load();
+    refreshAllDevicesStats();
+    requestUpdate();
+  });
 }
 
 void BookStatsActivity::onExit() {
@@ -361,6 +438,17 @@ void BookStatsActivity::loop() {
     return;
   }
 
+  if (historyActions && (!statsAvailable || historyDeletionFailed)) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Back) ||
+        TouchHeaderBackButton::wasTapped(mappedInput, TouchHeaderBackButton::compactHeaderRect(renderer))) {
+      mappedInput.suppressNextBackRelease();
+      finish();
+    } else if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      showBookOptions();
+    }
+    return;
+  }
+
   if (TouchHeaderBackButton::wasTapped(mappedInput, TouchHeaderBackButton::compactHeaderRect(renderer))) {
     if (page == Page::EditDates) {
       finishDateEditing(true);
@@ -376,6 +464,10 @@ void BookStatsActivity::loop() {
       return;
     }
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      if (historyActions) {
+        showBookOptions();
+        return;
+      }
       mappedInput.suppressNextConfirmRelease();
       exitStatsActivity();
       return;
@@ -444,6 +536,10 @@ void BookStatsActivity::loop() {
   }
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    if (historyActions && page == Page::PerBook) {
+      showBookOptions();
+      return;
+    }
     mappedInput.suppressNextConfirmRelease();
     if (page == Page::PerBook && hasEditableBook()) {
       beginDateEditing();
@@ -493,10 +589,32 @@ void BookStatsActivity::loop() {
 }
 
 void BookStatsActivity::render(RenderLock&&) {
+  if (historyActions && (!statsAvailable || historyDeletionFailed)) {
+    renderer.clearScreen();
+    const auto& metrics = UITheme::getInstance().getMetrics();
+    if (mappedInput.hasTouchHardware())
+      TouchHeaderBackButton::drawCompact(renderer, tr(STR_READING_STATS));
+    else
+      CompactHeader::drawTitle(renderer, tr(STR_READING_STATS));
+    const int x = metrics.contentSidePadding;
+    const int width = std::max(1, renderer.getScreenWidth() - x * 2);
+    const int y = CompactHeader::contentTop(metrics) + metrics.verticalSpacing;
+    const auto title = renderer.truncatedText(UI_10_FONT_ID, bookTitle.c_str(), width);
+    renderer.drawText(UI_10_FONT_ID, x, y, title.c_str());
+    const auto message = renderer.truncatedText(
+        UI_10_FONT_ID, historyDeletionFailed ? tr(STR_BOOK_DELETE_HISTORY_FAILED) : tr(STR_HISTORY_STATS_UNAVAILABLE),
+        width);
+    renderer.drawText(UI_10_FONT_ID, x, y + renderer.getLineHeight(UI_10_FONT_ID) + 20, message.c_str());
+    const auto labels = mappedInput.mapLabels(mappedInput.withBackArrow(tr(STR_BACK)), tr(STR_BOOK_OPTIONS), "", "");
+    GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
+    renderer.displayBuffer();
+    return;
+  }
   if (usesNoRtcSingleScreenLayout()) {
     renderNoRtcCombinedStatsPage(renderer, &mappedInput, bookTitle, stats, progressPercent, hasEstimatedTimeLeft,
                                  estimatedTimeLeftSeconds, globalStats,
-                                 showAllDevicesStats ? &allDevicesStats : nullptr, true);
+                                 showAllDevicesStats ? &allDevicesStats : nullptr, true,
+                                 historyActions ? tr(STR_BOOK_OPTIONS) : nullptr);
     renderer.displayBuffer();
     return;
   }
@@ -504,7 +622,8 @@ void BookStatsActivity::render(RenderLock&&) {
   switch (page) {
     case Page::PerBook:
       renderPerBookStatsPage(renderer, &mappedInput, bookTitle, stats, progressPercent, hasEstimatedTimeLeft,
-                             estimatedTimeLeftSeconds, true, hasEditableBook(), true);
+                             estimatedTimeLeftSeconds, true, hasEditableBook(), true,
+                             historyActions ? tr(STR_BOOK_OPTIONS) : nullptr);
       break;
     case Page::ThisDevice:
       renderGlobalStatsPage(renderer, &mappedInput, tr(STR_STATS_THIS_DEVICE_SCREEN), globalStats, true,

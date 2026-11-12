@@ -94,6 +94,7 @@ inline esp_sleep_wakeup_cause_t esp_sleep_get_wakeup_cause() { return ESP_SLEEP_
 #include "activities/ActivityManager.h"
 #include "activities/boot_sleep/ImageFolderIndex.h"
 #include "activities/home/BookActions.h"
+#include "activities/reader/CompletedBooksStore.h"
 #include "activities/reader/GlobalReadingStats.h"
 #include "activities/reader/KOReaderSyncActivity.h"
 #include "activities/reader/ReaderUtils.h"
@@ -1345,6 +1346,9 @@ void setup() {
   HalSystem::checkPanic();
 
   SETTINGS.loadFromFile();
+  if (!CompletedBooksStore::recoverPendingDeletion()) {
+    LOG_ERR("MAIN", "Pending history deletion could not be completed");
+  }
   {
     auto stats = GlobalReadingStats::load();
     stats.refreshReserveFuel();

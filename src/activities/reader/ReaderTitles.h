@@ -28,5 +28,5 @@ constexpr size_t indexFor(uint32_t books) {
 }
 inline const char* nameFor(uint32_t books) { return I18N.get(levels[indexFor(books)].name); }
 // Shared by the milestone page and Dashboard; bitmap assets are defined once.
-const freeink::Icon& iconFor(uint32_t books);
+const freeink::Icon& iconFor(uint32_t books, int size = 24);
 }  // namespace ReaderTitles

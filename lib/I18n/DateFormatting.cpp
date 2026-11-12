@@ -1,17 +1,30 @@
 #include <DateFormatting.h>
 
 #include <cstdio>
+#include <cstring>
 
 #include "I18n.h"
+
+namespace {
+constexpr StrId monthNames[] = {StrId::STR_MONTH_JAN_SHORT, StrId::STR_MONTH_FEB_SHORT, StrId::STR_MONTH_MAR_SHORT,
+                                StrId::STR_MONTH_APR_SHORT, StrId::STR_MONTH_MAY_SHORT, StrId::STR_MONTH_JUN_SHORT,
+                                StrId::STR_MONTH_JUL_SHORT, StrId::STR_MONTH_AUG_SHORT, StrId::STR_MONTH_SEP_SHORT,
+                                StrId::STR_MONTH_OCT_SHORT, StrId::STR_MONTH_NOV_SHORT, StrId::STR_MONTH_DEC_SHORT};
+}
+
+bool formatMonthYear(char* buf, const size_t bufSize, const uint16_t year, const uint8_t month) {
+  if (!buf || bufSize == 0 || month < 1 || month > 12) return false;
+  const char* name = I18N.get(monthNames[month - 1]);
+  size_t length = std::strlen(name);
+  if (length > 0 && name[length - 1] == '.') --length;
+  const int written = std::snprintf(buf, bufSize, "%.*s/%04u", static_cast<int>(length), name, year);
+  return written >= 0 && static_cast<size_t>(written) < bufSize;
+}
 
 bool formatDateParts(char* buf, const size_t bufSize, const uint16_t year, const uint8_t month, const uint8_t day,
                      const uint8_t dateFormat, const char numericSeparator) {
   if (bufSize == 0 || month < 1 || month > 12 || day < 1 || day > 31) return false;
 
-  static constexpr StrId monthNames[] = {
-      StrId::STR_MONTH_JAN_SHORT, StrId::STR_MONTH_FEB_SHORT, StrId::STR_MONTH_MAR_SHORT, StrId::STR_MONTH_APR_SHORT,
-      StrId::STR_MONTH_MAY_SHORT, StrId::STR_MONTH_JUN_SHORT, StrId::STR_MONTH_JUL_SHORT, StrId::STR_MONTH_AUG_SHORT,
-      StrId::STR_MONTH_SEP_SHORT, StrId::STR_MONTH_OCT_SHORT, StrId::STR_MONTH_NOV_SHORT, StrId::STR_MONTH_DEC_SHORT};
   static constexpr StrId fullMonthNames[] = {StrId::STR_MONTH_JAN, StrId::STR_MONTH_FEB, StrId::STR_MONTH_MAR,
                                              StrId::STR_MONTH_APR, StrId::STR_MONTH_MAY, StrId::STR_MONTH_JUN,
                                              StrId::STR_MONTH_JUL, StrId::STR_MONTH_AUG, StrId::STR_MONTH_SEP,

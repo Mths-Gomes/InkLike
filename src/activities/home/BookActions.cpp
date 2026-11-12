@@ -90,7 +90,10 @@ bool canSendNearby(const std::string& path) {
 
 void clearFileMetadata(const std::string& fullPath) {
   if (FsHelpers::hasEpubExtension(fullPath)) {
-    Epub(fullPath, "/.crosspoint").clearCache();
+    // The book may disappear, but its reading history still links to this cache ID.
+    if (!clearBookCacheDirectoryPreservingStats(bookStatsCachePath(fullPath))) {
+      LOG_ERR("BookActions", "Could not clear deleted book cache while preserving stats: %s", fullPath.c_str());
+    }
     BookmarkStore::deleteForFilePath(fullPath, "epub");
     ClippingStore::deleteForFilePath(fullPath, "epub");
   } else if (FsHelpers::hasXtcExtension(fullPath)) {

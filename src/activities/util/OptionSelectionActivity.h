@@ -21,6 +21,7 @@ class OptionSelectionActivity final : public Activity {
   void loop() override;
   void render(RenderLock&&) override;
   bool allowPowerAsConfirmInReaderMode() const override { return readerMode_; }
+  void showAsActionMenu() { actionMenu_ = true; }
 
  private:
   void cancel();
@@ -33,6 +34,7 @@ class OptionSelectionActivity final : public Activity {
   int selectedIndex_ = 0;
   bool readerMode_ = false;
   bool showTouchHeaderBackButton_ = false;
+  bool actionMenu_ = false;
   using UiApp = freeink::ui::FreeInkApp<20, 4>;
   freeink::ui::GfxRendererTarget uiTarget_;
   UiApp app_;

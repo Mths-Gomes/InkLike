@@ -32,8 +32,16 @@ class HalStorage {
  public:
   std::map<std::string, std::string> files;
   unsigned writes = 0;
+  std::string failRemovePath;
+  unsigned failWrites = 0;
   bool exists(const char* path) const { return files.count(path) != 0; }
-  bool remove(const char* path) { return files.erase(path) != 0; }
+  bool remove(const char* path) {
+    if (failRemovePath == path) {
+      failRemovePath.clear();
+      return false;
+    }
+    return files.erase(path) != 0;
+  }
   bool mkdir(const char* path) {
     files.try_emplace(path, "<directory>");
     return true;

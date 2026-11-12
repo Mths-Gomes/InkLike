@@ -56,6 +56,17 @@ static constexpr char GLOBAL_STATS_PATH[] = "/.crosspoint/global_stats.bin";
 static constexpr char GLOBAL_STATS_BAK_PATH[] = "/.crosspoint/global_stats.bin.bak";
 static constexpr char SYNCED_STATS_DIR[] = "/.crosspoint/synced_stats";
 static bool s_blockDestructiveSave = false;
+static constexpr char HISTORY_BEFORE_PATH[] = "/.crosspoint/global_stats.history-before.bin";
+static constexpr char HISTORY_AFTER_PATH[] = "/.crosspoint/global_stats.history-after.bin";
+
+static bool recoverHistoryCounterPublish() {
+  if (!Storage.exists(HISTORY_BEFORE_PATH) || !Storage.exists(HISTORY_AFTER_PATH)) return true;
+  if (Storage.exists(GLOBAL_STATS_PATH) || !Storage.rename(HISTORY_AFTER_PATH, GLOBAL_STATS_PATH)) {
+    LOG_ERR("GSTATS", "Could not finish history counter publication");
+    return false;
+  }
+  return true;
+}
 
 uint32_t readLe32(const uint8_t* data, const int offset) {
   return static_cast<uint32_t>(data[offset]) | (static_cast<uint32_t>(data[offset + 1]) << 8) |
@@ -286,6 +297,7 @@ static StatsLoadOutcome loadFromFile(const char* path, GlobalReadingStats& out) 
 }
 
 GlobalReadingStats GlobalReadingStats::load() {
+  recoverHistoryCounterPublish();
   GlobalReadingStats stats;
   stats.reserveFuel = ReserveFuelStore::load();
   const StatsLoadOutcome primary = loadFromFile(GLOBAL_STATS_PATH, stats);
@@ -375,6 +387,10 @@ GlobalReadingStats GlobalReadingStats::loadAggregated(const GlobalReadingStats& 
 }
 
 void GlobalReadingStats::save() const {
+  if (Storage.exists(HISTORY_BEFORE_PATH) && Storage.exists(HISTORY_AFTER_PATH)) {
+    LOG_ERR("GSTATS", "Deferring save during interrupted history counter publication");
+    return;
+  }
   if (s_blockDestructiveSave) {
     LOG_ERR("GSTATS", "Refusing to overwrite on-disk stats after newer-format file was detected");
     return;
@@ -387,9 +403,49 @@ void GlobalReadingStats::save() const {
 static uint32_t s_localResetRevision = 0;
 
 bool GlobalReadingStats::resetLocal() {
+  if (!recoverHistoryCounterPublish()) return false;
   if (!saveToFile(GlobalReadingStats{}, GLOBAL_STATS_PATH, nullptr)) return false;
   ReserveFuelStore::update(GlobalReadingStats{});
   s_localResetRevision++;
+  return true;
+}
+
+bool GlobalReadingStats::commitHistoryRemoval() {
+  if (!Storage.exists(HISTORY_BEFORE_PATH)) {
+    auto current = load();
+    if (s_blockDestructiveSave) return false;
+    // Ensure a canonical source exists even when the counter was missing or recovered.
+    if (!saveToFile(current, GLOBAL_STATS_PATH, GLOBAL_STATS_BAK_PATH)) return false;
+    if (current.completedBooks > 0) --current.completedBooks;
+    if (!saveToFile(current, HISTORY_AFTER_PATH, nullptr)) return false;
+    if (!Storage.rename(GLOBAL_STATS_PATH, HISTORY_BEFORE_PATH)) {
+      LOG_ERR("GSTATS", "Could not stage history counter removal");
+      return false;
+    }
+  }
+  if (!recoverHistoryCounterPublish()) return false;
+  // HISTORY_BEFORE_PATH remains until the catalog and journal are gone. An
+  // absent AFTER file proves publication even if later reading changes the count.
+  GlobalReadingStats committed;
+  if (loadFromFile(GLOBAL_STATS_PATH, committed).result != StatsLoadResult::Ok) {
+    LOG_ERR("GSTATS", "Could not verify history counter publication");
+    return false;
+  }
+  return saveToFile(committed, GLOBAL_STATS_BAK_PATH, nullptr);
+}
+
+bool GlobalReadingStats::clearHistoryRemovalReceipt() {
+  for (const char* path : {HISTORY_BEFORE_PATH, HISTORY_AFTER_PATH}) {
+    const std::string temporary = std::string(path) + ".tmp";
+    if (Storage.exists(temporary.c_str()) && !Storage.remove(temporary.c_str())) {
+      LOG_ERR("GSTATS", "Could not remove history counter temporary file: %s", temporary.c_str());
+      return false;
+    }
+    if (Storage.exists(path) && !Storage.remove(path)) {
+      LOG_ERR("GSTATS", "Could not remove history counter receipt: %s", path);
+      return false;
+    }
+  }
   return true;
 }
 

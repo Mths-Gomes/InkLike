@@ -13,6 +13,10 @@ class PersistableStoreBase {
     return it != Storage.files.end() && !deserializeJson(doc, it->second);
   }
   static bool writeDocToFileAtomically(const char* path, const JsonDocument& doc) {
+    if (Storage.failWrites > 0) {
+      --Storage.failWrites;
+      return false;
+    }
     std::string output;
     serializeJson(doc, output);
     Storage.files[path] = output;

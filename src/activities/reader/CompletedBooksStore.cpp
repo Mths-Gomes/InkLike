@@ -6,10 +6,24 @@
 
 #include <cstring>
 
+#include "GlobalReadingStats.h"
+
 namespace {
 constexpr char kDirectory[] = "/.crosspoint/completed_books";
 constexpr size_t kMaxTitleBytes = 512;
 constexpr size_t kMaxRecordBytes = 4096;
+constexpr char kDeletionJournal[] = "/.crosspoint/completed_books/.deleting.json";
+
+bool validCacheId(const char* id) {
+  if (strncmp(id, "epub_", 5) != 0 && strncmp(id, "xtc_", 4) != 0) return false;
+  const size_t length = strlen(id);
+  if (length >= sizeof(CompletedBooksStore::Entry::cacheId)) return false;
+  for (size_t i = 0; i < length; ++i) {
+    const char c = id[i];
+    if (!(c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) return false;
+  }
+  return true;
+}
 
 size_t utf8PrefixLength(const char* text, const size_t length, const size_t maximum) {
   size_t bytes = length < maximum ? length : maximum;
@@ -45,11 +59,78 @@ ReadingStatsDate dateFrom(const JsonDocument& doc) {
   if (!date.isValid()) date.clear();
   return date;
 }
+
+bool removeRecordFiles(const std::string& path) {
+  // Recovery sources first; leave the canonical file if any cleanup fails.
+  for (const char* suffix : {".tmp", ".bak", ""}) {
+    const std::string source = path + suffix;
+    if (Storage.exists(source.c_str()) && !Storage.remove(source.c_str())) {
+      LOG_ERR("BOOKLOG", "Could not remove history file: %s", source.c_str());
+      return false;
+    }
+  }
+  return true;
+}
 }  // namespace
+
+bool CompletedBooksStore::recoverPendingDeletion() {
+  if (!recordExists(kDeletionJournal)) return GlobalReadingStats::clearHistoryRemovalReceipt();
+  JsonDocument journal;
+  if (!readRecord(kDeletionJournal, journal) || (journal["version"] | 0) != 1 ||
+      !validCacheId(journal["cacheId"] | "")) {
+    LOG_ERR("BOOKLOG", "Could not recover history deletion journal");
+    return false;
+  }
+  const std::string cachePath = std::string("/.crosspoint/") + (journal["cacheId"] | "");
+  if (!BookReadingStats::remove(cachePath)) return false;
+  if ((journal["counted"] | false) && !GlobalReadingStats::commitHistoryRemoval()) return false;
+  if (!removeRecordFiles(recordPath(cachePath))) return false;
+  // Remove the journal before its receipt. A leftover receipt can be discarded
+  // next time, whereas a remaining journal must still see the consumed AFTER file.
+  if (!removeRecordFiles(kDeletionJournal)) return false;
+  return GlobalReadingStats::clearHistoryRemovalReceipt();
+}
+
+bool CompletedBooksStore::eraseHistory(const std::string& cachePath) {
+  if (!recoverPendingDeletion()) return false;
+  const std::string path = recordPath(cachePath);
+  JsonDocument record;
+  if (!readRecord(path, record)) return !recordExists(path);
+  if ((record["version"] | 0) != 1) {
+    LOG_ERR("BOOKLOG", "Unsupported history version during deletion: %s", path.c_str());
+    return false;
+  }
+  const size_t slash = cachePath.find_last_of('/');
+  const std::string id = cachePath.substr(slash == std::string::npos ? 0 : slash + 1);
+  if (cachePath != std::string("/.crosspoint/") + id || !validCacheId(id.c_str())) {
+    LOG_ERR("BOOKLOG", "Invalid history deletion reference");
+    return false;
+  }
+  JsonDocument journal;
+  journal["version"] = 1;
+  journal["cacheId"] = id;
+  journal["counted"] = record["completed"] | false;
+  if (journal.overflowed() || !PersistableStoreBase::writeDocToFileAtomically(kDeletionJournal, journal)) {
+    LOG_ERR("BOOKLOG", "Could not prepare history deletion journal");
+    return false;
+  }
+  return recoverPendingDeletion();
+}
+
+bool CompletedBooksStore::deletionPendingFor(const std::string& cachePath) {
+  if (!recordExists(kDeletionJournal)) return false;
+  JsonDocument journal;
+  if (!readRecord(kDeletionJournal, journal)) return true;
+  return cachePath == std::string("/.crosspoint/") + (journal["cacheId"] | "");
+}
 
 bool CompletedBooksStore::update(const std::string& cachePath, const std::string& title,
                                  const BookReadingStats& stats) {
   if (cachePath.empty()) return true;
+  if (deletionPendingFor(cachePath)) {
+    LOG_ERR("BOOKLOG", "Deferring history update until pending deletion completes");
+    return false;
+  }
   const std::string path = recordPath(cachePath);
   // Cold-path temporary documents contain one title (at most 512 bytes) and
   // scalar fields, rather than a growing library-wide array on the C3 heap.
@@ -116,7 +197,9 @@ bool CompletedBooksStore::migrate(const std::string& oldCachePath, const std::st
   return true;
 }
 
-void CompletedBooksStore::loadPage(const uint32_t offset, const uint16_t currentYear, Page& page) {
+void CompletedBooksStore::loadPage(const uint32_t offset, const uint16_t currentYear, Page& page,
+                                   const char* selectedCacheId, uint32_t* selectedIndex) {
+  if (selectedIndex) *selectedIndex = UINT32_MAX;
   page.size = 0;
   page.total = page.thisYear = page.unknownYear = 0;
   page.ok = true;
@@ -151,6 +234,11 @@ void CompletedBooksStore::loadPage(const uint32_t offset, const uint16_t current
       continue;
     }
     if (!(doc["completed"] | false)) continue;
+    const size_t idStart = path.find_last_of('/') + 1;
+    const size_t idLength = path.size() - idStart - 5;
+    if (selectedCacheId && selectedIndex && strlen(selectedCacheId) == idLength &&
+        path.compare(idStart, idLength, selectedCacheId) == 0)
+      *selectedIndex = page.total;
     const ReadingStatsDate date = dateFrom(doc);
     if (!date.isValid())
       ++page.unknownYear;
@@ -163,8 +251,28 @@ void CompletedBooksStore::loadPage(const uint32_t offset, const uint16_t current
       memcpy(entry.title, title, bytes);
       entry.title[bytes] = '\0';
       entry.date = date;
+      const std::string id = path.substr(idStart, idLength);
+      entry.cacheId[0] = '\0';
+      if (validCacheId(id.c_str())) memcpy(entry.cacheId, id.c_str(), id.size() + 1);
     }
     ++page.total;
   }
   dir.close();
+}
+
+bool CompletedBooksStore::loadDetails(const Entry& entry, std::string& cachePath, std::string& title) {
+  if (!validCacheId(entry.cacheId)) {
+    LOG_ERR("BOOKLOG", "Invalid history cache reference");
+    return false;
+  }
+  JsonDocument doc;
+  const std::string path = std::string(kDirectory) + "/" + entry.cacheId + ".json";
+  if (!readRecord(path, doc) || (doc["version"] | 0) != 1 || !(doc["completed"] | false)) {
+    LOG_ERR("BOOKLOG", "Could not open selected history record: %s", path.c_str());
+    return false;
+  }
+  cachePath = std::string("/.crosspoint/") + entry.cacheId;
+  const char* storedTitle = doc["title"] | "";
+  title.assign(storedTitle, utf8PrefixLength(storedTitle, strlen(storedTitle), kMaxTitleBytes));
+  return true;
 }

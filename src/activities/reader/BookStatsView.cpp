@@ -500,7 +500,7 @@ void drawDateAdjustButton(const GfxRenderer& renderer, const int x, const int y,
 void renderPerBookStatsPage(GfxRenderer& renderer, const MappedInputManager* mappedInput, const std::string& bookTitle,
                             const BookReadingStats& stats, const float progressPercent, const bool hasEstimatedTimeLeft,
                             const uint32_t estimatedTimeLeftSeconds, const bool showButtonHints,
-                            const bool showEditButton, const bool showMoreButton) {
+                            const bool showEditButton, const bool showMoreButton, const char* confirmLabel) {
   renderer.clearScreen();
   const bool showRtcStats = shouldShowRtcBasedStats();
   const auto& metrics = UITheme::getInstance().getMetrics();
@@ -563,9 +563,9 @@ void renderPerBookStatsPage(GfxRenderer& renderer, const MappedInputManager* map
   }
 
   if (showButtonHints && mappedInput) {
-    const auto labels =
-        mappedInput->mapLabels(mappedInput->withBackArrow(tr(STR_BACK)), showEditButton ? tr(STR_EDIT) : "", "",
-                               showMoreButton ? tr(STR_MORE) : "");
+    const auto labels = mappedInput->mapLabels(mappedInput->withBackArrow(tr(STR_BACK)),
+                                               confirmLabel ? confirmLabel : (showEditButton ? tr(STR_EDIT) : ""), "",
+                                               showMoreButton ? tr(STR_MORE) : "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
   }
 }
@@ -638,7 +638,8 @@ void renderNoRtcCombinedStatsPage(GfxRenderer& renderer, const MappedInputManage
                                   const std::string& bookTitle, const BookReadingStats& bookStats,
                                   const float progressPercent, const bool hasEstimatedTimeLeft,
                                   const uint32_t estimatedTimeLeftSeconds, const GlobalReadingStats& deviceStats,
-                                  const GlobalReadingStats* allDevicesStats, const bool showButtonHints) {
+                                  const GlobalReadingStats* allDevicesStats, const bool showButtonHints,
+                                  const char* confirmLabel) {
   renderer.clearScreen();
   const auto& metrics = UITheme::getInstance().getMetrics();
   const auto& layout = getNoRtcCombinedLayout(renderer, mappedInput, showButtonHints, allDevicesStats != nullptr);
@@ -680,7 +681,8 @@ void renderNoRtcCombinedStatsPage(GfxRenderer& renderer, const MappedInputManage
   }
 
   if (showButtonHints && mappedInput) {
-    const auto labels = mappedInput->mapLabels(mappedInput->withBackArrow(tr(STR_BACK)), "", "", "");
+    const auto labels =
+        mappedInput->mapLabels(mappedInput->withBackArrow(tr(STR_BACK)), confirmLabel ? confirmLabel : "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4, true);
   }
 }

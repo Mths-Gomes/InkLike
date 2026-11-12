@@ -32,8 +32,16 @@ class BookStatsActivity final : public Activity {
   bool ignoreInitialBackRelease = false;
   bool ignoreInitialConfirmRelease = false;
   bool ignoreInitialPowerRelease = false;
+  bool historyActions = false;
+  bool statsAvailable = true;
+  bool historyDeletionFailed = false;
 
-  bool hasEditableBook() const { return !bookCachePath.empty() && halClock.isAvailable(); }
+  bool hasEditableBook() const {
+    return statsAvailable && !historyDeletionFailed && !bookCachePath.empty() && halClock.isAvailable();
+  }
+  void showBookOptions();
+  void confirmHistoryDeletion();
+  void resetReleaseGuards();
   bool usesNoRtcSingleScreenLayout() const { return !halClock.isAvailable(); }
   void refreshAllDevicesStats();
   void saveStats();
@@ -65,5 +73,10 @@ class BookStatsActivity final : public Activity {
   void onExit() override;
   void loop() override;
   void render(RenderLock&&) override;
+  // Enabled only when opened from the completion history, never over a live reader.
+  void enableHistoryActions(bool available) {
+    historyActions = true;
+    statsAvailable = available;
+  }
   bool allowPowerAsConfirmInReaderMode() const override { return true; }
 };

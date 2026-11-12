@@ -46,6 +46,11 @@ struct GlobalReadingStats {
   // Saves stats to /.crosspoint/global_stats.bin.
   void save() const;
 
+  // Recoverable completion-counter transaction for one history deletion.
+  // The consumed staging file is a durable receipt, so retries cannot decrement twice.
+  static bool commitHistoryRemoval();
+  static bool clearHistoryRemovalReceipt();
+
   // Replaces /.crosspoint/global_stats.bin with a fresh empty file without
   // rotating or deleting any backup files.
   static bool resetLocal();
