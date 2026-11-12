@@ -328,10 +328,8 @@ void ReaderTitlesActivity::renderOverview(Screen& screen) {
     const int fill =
         static_cast<int>((static_cast<uint64_t>(completedBooks - base) * (width - 4)) / (next.minimumBooks - base));
     if (fill > 0) renderer.fillRect(x + 2, y + 2, fill, 10, true);
-    y += 14;
   } else {
     renderer.drawText(UI_10_FONT_ID, x, y, tr(STR_TITLE_MAXIMUM));
-    y += line;
   }
 }
 
