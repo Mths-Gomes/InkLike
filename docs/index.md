@@ -3,14 +3,16 @@ title: Home
 nav_order: 1
 ---
 
-# CrossInk
+# InkLike
 
-Welcome to CrossInk, a personal fork of CrossPoint Reader.
+Welcome to InkLike, a personal fork of CrossInk, based on CrossPoint Reader.
 
-[View on GitHub](https://github.com/uxjulia/CrossInk)
+[View on GitHub](https://github.com/Mths-Gomes/InkLike)
 
 ## User Docs
 
+- [Dashboard and Carousel](./dashboard.md)
+- [Update-check Diagnostics](./ota-diagnostics.md)
 - [Touch Navigation](./touch-navigation.md)
 - [User Guide](./user-guide.md)
 - [Installation](./installation.md)
