@@ -692,8 +692,6 @@ void SleepActivity::renderDefaultSleepScreen() const {
   const auto pageHeight = renderer.getScreenHeight();
 
   renderer.clearScreen();
-  renderer.drawImage(InkLikeSleepLogo, (pageWidth - InkLikeSleepLogoSize) / 2, (pageHeight - InkLikeSleepLogoSize) / 2,
-                     InkLikeSleepLogoSize, InkLikeSleepLogoSize);
   renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 70, tr(STR_INKLIKE), true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight / 2 + 95, tr(STR_SLEEPING));
 
@@ -701,6 +699,20 @@ void SleepActivity::renderDefaultSleepScreen() const {
   const bool lightSleepScreen = SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::LIGHT;
   if (!lightSleepScreen) {
     renderer.invertScreen();
+  }
+
+  // Draw after background inversion so both modes keep the source colors.
+  // drawPixel handles orientation; drawImage only rotates the bitmap's origin.
+  const int logoX = (pageWidth - InkLikeSleepLogoSize) / 2;
+  const int logoY = (pageHeight - InkLikeSleepLogoSize) / 2;
+  for (int y = 0; y < InkLikeSleepLogoSize; ++y) {
+    for (int x = 0; x < InkLikeSleepLogoSize; ++x) {
+      const int bit = y * InkLikeSleepLogoSize + x;
+      const uint8_t mask = 0x80 >> (bit & 7);
+      if (InkLikeSleepLogoCoverage[bit / 8] & mask) {
+        renderer.drawPixel(logoX + x, logoY + y, (InkLikeSleepLogo[bit / 8] & mask) == 0);
+      }
+    }
   }
 
 #ifdef CROSSINK_SHOW_SLEEP_BUILD_INFO
