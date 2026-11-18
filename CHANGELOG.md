@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+
+- Use the InkLike name and ink bottle logo on the default sleep screen, preserving the logo's orientation, transparency, and colors in both light and dark modes.
+
 ## [v1.1.0] - 2026-11-12
 
 ### Added

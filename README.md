@@ -1,5 +1,9 @@
 # InkLike
 
+<p align="center">
+  <img src="assets/branding/InkBottleWhiteOutline.png" alt="InkLike logo" width="160">
+</p>
+
 Personal e-reader firmware focused on comfortable reading, useful reading stats, and a few helpful and fun features for my own devices.
 
 InkLike keeps the reading experience simple: open a book, make the page comfortable, and enjoy reading. New features should support that experience and stay practical for the hardware.
