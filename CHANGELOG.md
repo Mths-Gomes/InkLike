@@ -1,8 +1,20 @@
 ## [Unreleased]
 
+## [v1.2.0] - 2026-11-18
+
+### Added
+
+- Choose one, three, or five recent books on the Dashboard (one by default), with a carousel for multiple books, side-button navigation, page squares below the book text, and reading statistics for the selected book.
+- Manual firmware update checks save a bounded `/ota-check.log` on the SD card and show diagnostic error codes when checking fails, allowing troubleshooting on devices without USB serial access.
+
 ### Changed
 
 - Use the InkLike name and ink bottle logo on the default sleep screen, preserving the logo's orientation, transparency, and colors in both light and dark modes.
+
+### Fixed
+
+- Show the InkLike logo and name on the default startup screen, including restarts after firmware updates.
+- Keep the author visible on the Dashboard when switching carousel books instead of replacing it with the current chapter title.
 
 ## [v1.1.0] - 2026-11-12
 

@@ -16,7 +16,7 @@
 #include "CrossPointState.h"
 #include "ImageFolderIndex.h"
 #include "fontIds.h"
-#include "images/Logo120.h"
+#include "images/InkLikeSleepLogo.h"
 
 namespace {
 
@@ -119,8 +119,20 @@ void drawDefaultBootLogo(const GfxRenderer& renderer) {
   const auto pageHeight = renderer.getScreenHeight();
 
   renderer.clearScreen();
-  renderer.drawImage(Logo120, (pageWidth - 120) / 2, (pageHeight - 120) / 2, 120, 120);
-  renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 70, tr(STR_CROSSINK), true, EpdFontFamily::BOLD);
+  const int logoX = (pageWidth - InkLikeSleepLogoSize) / 2;
+  const int logoY = (pageHeight - InkLikeSleepLogoSize) / 2;
+  // Match the sleep logo's source colors and transparency. drawPixel also
+  // rotates each pixel correctly for the renderer's current orientation.
+  for (int y = 0; y < InkLikeSleepLogoSize; ++y) {
+    for (int x = 0; x < InkLikeSleepLogoSize; ++x) {
+      const int bit = y * InkLikeSleepLogoSize + x;
+      const uint8_t mask = 0x80 >> (bit & 7);
+      if (InkLikeSleepLogoCoverage[bit / 8] & mask) {
+        renderer.drawPixel(logoX + x, logoY + y, (InkLikeSleepLogo[bit / 8] & mask) == 0);
+      }
+    }
+  }
+  renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 70, tr(STR_INKLIKE), true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight / 2 + 95, tr(STR_BOOTING));
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight - 30, AppVersion::version());
 }

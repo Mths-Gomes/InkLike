@@ -11,6 +11,9 @@ class OtaUpdater {
   size_t otaSize = 0;
   size_t processedSize = 0;
   size_t totalSize = 0;
+  // Bounded diagnostic text; allocated only with the update activity.
+  char checkDetails[80] = {};
+  bool checkLogSaved = false;
 
  public:
   using ProgressCallback = void (*)(void* ctx);
@@ -30,6 +33,8 @@ class OtaUpdater {
   };
 
   size_t getOtaSize() const { return otaSize; }
+  const char* getCheckDetails() const { return checkDetails; }
+  bool wasCheckLogSaved() const { return checkLogSaved; }
 
   // Progress work covers both staging and flashing so it never moves backwards.
   size_t getProcessedSize() const { return processedSize; }

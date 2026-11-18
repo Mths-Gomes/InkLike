@@ -17,6 +17,7 @@ constexpr ThemeMetrics makeValues() {
 }
 
 constexpr ThemeMetrics values = makeValues();
+constexpr int maxRecentBooks = 5;
 constexpr int homeCoverImageWidth = 296;
 constexpr int homeCoverImageHeight = 444;
 }  // namespace DashboardMetrics

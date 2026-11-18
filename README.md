@@ -47,7 +47,7 @@ For a device already running compatible firmware:
 3. Open **Settings > System > SD Card Firmware Update** and select the file.
 4. After restarting, check that System settings show **InkLike** and the expected version.
 
-The current release is **1.1.0**. InkLike uses its own version sequence, beginning at 1.0.0. For the first transition from the inherited 1.6.1 firmware, use the SD-card updater: its online updater considers these InkLike versions older. Subsequent InkLike update checks use this repository's releases.
+The current release is **1.2.0**. InkLike uses its own version sequence, beginning at 1.0.0. For the first transition from the inherited 1.6.1 firmware, use the SD-card updater: its online updater considers these InkLike versions older. Subsequent InkLike update checks use this repository's releases.
 
 Existing SD-card paths, including `.crosspoint` and the settings filename, are retained so the branding change does not reset preferences, progress, or reading stats.
 

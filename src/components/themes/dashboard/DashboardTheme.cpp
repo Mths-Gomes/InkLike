@@ -598,8 +598,8 @@ void drawFooterStats(const GfxRenderer& renderer, const Rect& coverRect, const G
   }
 }
 
-void drawBookText(const GfxRenderer& renderer, const Rect& coverRect, const RecentBook& book,
-                  const char* currentChapterTitle, const bool black = true) {
+int drawBookText(const GfxRenderer& renderer, const Rect& coverRect, const RecentBook& book,
+                 const char* currentChapterTitle, const bool black = true, const bool carousel = false) {
   const int inset = contentInset(renderer);
   const int textW = renderer.getScreenWidth() - inset * 2;
   const char* title = book.title.empty() ? book.path.c_str() : book.title.c_str();
@@ -614,13 +614,16 @@ void drawBookText(const GfxRenderer& renderer, const Rect& coverRect, const Rece
   const char* subtitle =
       (currentChapterTitle != nullptr && currentChapterTitle[0] != '\0') ? currentChapterTitle : book.author.c_str();
   if (subtitle != nullptr && subtitle[0] != '\0') {
-    auto subtitleLines = renderer.wrappedText(UI_12_FONT_ID, subtitle, textW, kBookChapterMaxLines);
+    // Leave room for pagination above the footer when the carousel is enabled.
+    auto subtitleLines = renderer.wrappedText(UI_12_FONT_ID, subtitle, textW, carousel ? 1 : kBookChapterMaxLines);
     int subtitleY = textY + kTitleChapterGap;
     for (const auto& line : subtitleLines) {
       renderer.drawText(UI_12_FONT_ID, coverRect.x, subtitleY, line.c_str(), black);
       subtitleY += titleLineH;
     }
+    textY = subtitleY;
   }
+  return textY;
 }
 }  // namespace
 
@@ -629,8 +632,8 @@ void DashboardTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const
                                          bool& bufferRestored, const std::function<bool()>& storeCoverBuffer,
                                          const BookReadingStats* stats, const float progressPercent,
                                          const GlobalReadingStats* globalStats, const char* currentChapterTitle) const {
-  (void)selectorIndex;
   (void)bufferRestored;
+  (void)currentChapterTitle;
 
   const Rect coverRect = coverRectForScreen(renderer, rect);
   if (recentBooks.empty()) {
@@ -640,15 +643,36 @@ void DashboardTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const
     return;
   }
 
+  const bool carousel = SETTINGS.dashboardRecentBooks > 1;
+  const int bookCount = std::min({DashboardMetrics::maxRecentBooks, static_cast<int>(SETTINGS.dashboardRecentBooks),
+                                  static_cast<int>(recentBooks.size())});
+  const int bookIndex = carousel ? std::clamp(selectorIndex, 0, bookCount - 1) : 0;
+  const auto& book = recentBooks[bookIndex];
   if (!coverRendered) {
-    drawBookCover(renderer, coverRect, recentBooks[0], Color::White);
+    drawBookCover(renderer, coverRect, book, Color::White);
     coverBufferStored = storeCoverBuffer();
     coverRendered = coverBufferStored;
   }
-  TouchRegistry::getInstance().add(coverRect, 0, TouchRegistry::Cover);
+  TouchRegistry::getInstance().add(coverRect, bookIndex, TouchRegistry::Cover);
 
-  drawDashboardStats(renderer, coverRect, stats, progressPercent, showBookStatsForPath(recentBooks[0].path));
-  drawBookText(renderer, coverRect, recentBooks[0], currentChapterTitle);
+  drawDashboardStats(renderer, coverRect, stats, progressPercent, showBookStatsForPath(book.path));
+  // Home always identifies the book by author, including after carousel navigation.
+  const int textBottom = drawBookText(renderer, coverRect, book, nullptr, true, carousel);
+  if (carousel) {
+    constexpr int squareSize = 8;
+    constexpr int squareGap = 6;
+    constexpr int textGap = 22;
+    const int width = bookCount * squareSize + (bookCount - 1) * squareGap;
+    const int y = textBottom + textGap;
+    int x = (renderer.getScreenWidth() - width) / 2;
+    for (int i = 0; i < bookCount; ++i) {
+      if (i == bookIndex)
+        renderer.fillRect(x, y, squareSize, squareSize, true);
+      else
+        renderer.drawRect(x, y, squareSize, squareSize, true);
+      x += squareSize + squareGap;
+    }
+  }
   if (SETTINGS.shouldTrackReadingStats()) drawFooterStats(renderer, coverRect, globalStats);
 }
 
