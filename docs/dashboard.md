@@ -5,6 +5,10 @@ nav_order: 7
 
 # Dashboard and Carousel
 
+![Illustration of the Dashboard carousel and its recent-book limit](./images/dashboard-carousel.png)
+
+*Feature illustration.*
+
 Select **Settings > Display > UI Theme > Dashboard** to use the Dashboard
 home screen. In Portuguese, the theme is named **Painel**.
 

@@ -8,6 +8,10 @@ Personal e-reader firmware focused on comfortable reading, useful reading stats,
 
 InkLike keeps the reading experience simple: open a book, make the page comfortable, and enjoy reading. New features should support that experience and stay practical for the hardware.
 
+[![Illustration of the Dashboard carousel with a choice of 1, 3, or 5 recent books](docs/images/dashboard-carousel.png)](docs/dashboard.md)
+
+*Carousel illustration. [Configuration and controls](docs/dashboard.md).*
+
 ## Highlights
 
 - **Reading stats:** reading time, sessions, pages turned, streaks, completed books, and time-of-day and day-of-week charts.
