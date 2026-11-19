@@ -7,6 +7,17 @@ nav_order: 6
 
 The Controls menu lets you customize front buttons, side buttons, and reader shortcuts.
 
+## Dashboard Carousel
+
+With the Dashboard theme selected, **Settings > Display > Dashboard Books**
+offers **1**, **3**, or **5** recent books. The default is one. With multiple
+books enabled, the upper side button selects the previous book and the lower
+side button selects the next; navigation wraps at both ends. **Read** opens
+the displayed book. Front-button menu shortcuts keep their existing actions.
+
+The squares below the author show the books actually available, up to the
+chosen limit. See [Dashboard and Carousel](./dashboard.md) for details.
+
 ## Settings Menu Layout
 
 ### Power Button

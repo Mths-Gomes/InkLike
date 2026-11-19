@@ -8,6 +8,10 @@ Personal e-reader firmware focused on comfortable reading, useful reading stats,
 
 InkLike keeps the reading experience simple: open a book, make the page comfortable, and enjoy reading. New features should support that experience and stay practical for the hardware.
 
+[![Illustration of the Dashboard carousel with a choice of 1, 3, or 5 recent books](docs/images/dashboard-carousel.png)](docs/dashboard.md)
+
+*Carousel illustration. [Configuration and controls](docs/dashboard.md).*
+
 ## Highlights
 
 - **Reading stats:** reading time, sessions, pages turned, streaks, completed books, and time-of-day and day-of-week charts.
@@ -15,6 +19,7 @@ InkLike keeps the reading experience simple: open a book, make the page comforta
 - **Finished-book history:** browse recorded completions with localized month/year dates and open each book's reading stats, even after its file has been deleted. Individual history deletion updates the completed-books total and current title after confirmation.
 - **Reserve Fuel:** earn reserves through consecutive reading days and spend them automatically to protect a streak after a missed day. Choose a limit of 1, 3, or 5 reserves and an earning interval of 3, 7, 15, or 30 days, or turn it off.
 - **A clearer Dashboard:** separate rows for streak and reader type, followed by Reserve Fuel and Books Read, with custom fuel-can and open-book icons.
+- **Dashboard carousel:** choose 1, 3, or 5 recent books, with side-button navigation, matching covers and reading stats, and page squares for the books actually available. See the [Dashboard guide](docs/dashboard.md).
 - **Fuel details in Reading Stats:** see your available reserves, capacity, and progress toward earning the next one. The all-books charts use the same spacing as the per-book screen.
 - **Dashboard book slot:** choose Books Read, your Reader Title with its icon, or Hidden in Book Counter Options. The Reading Stats counter retains its independent visibility setting.
 - **Language support:** the new Reserve Fuel and counter labels are translated into all 28 supported interface languages.
@@ -22,6 +27,7 @@ InkLike keeps the reading experience simple: open a book, make the page comforta
 - **Reading conveniences:** bookmarks, clippings, a dictionary, Focus Reading, Guide Dots, and customizable button actions.
 - **A personal home screen:** Minimal and Dashboard themes, book-cover sleep screens, and custom sleep images.
 - **Local transfers and sync:** upload books over Wi-Fi and sync supported reading progress and stats between devices.
+- **Update diagnostics:** manual update checks save the latest attempt to `/ota-check.log` on the SD card and show error details when a check fails. See [Update-check diagnostics](docs/ota-diagnostics.md).
 
 Reserve Fuel is device-local. A protected missed day preserves the streak but does not count as a reading day. Missing a day resets fuel-earning progress, and a full reserve does not bank extra progress.
 
@@ -47,7 +53,7 @@ For a device already running compatible firmware:
 3. Open **Settings > System > SD Card Firmware Update** and select the file.
 4. After restarting, check that System settings show **InkLike** and the expected version.
 
-The current release is **1.1.0**. InkLike uses its own version sequence, beginning at 1.0.0. For the first transition from the inherited 1.6.1 firmware, use the SD-card updater: its online updater considers these InkLike versions older. Subsequent InkLike update checks use this repository's releases.
+The current release is **1.2.0**. InkLike uses its own version sequence, beginning at 1.0.0. For the first transition from the inherited 1.6.1 firmware, use the SD-card updater: its online updater considers these InkLike versions older. Subsequent InkLike update checks use this repository's releases.
 
 Existing SD-card paths, including `.crosspoint` and the settings filename, are retained so the branding change does not reset preferences, progress, or reading stats.
 
@@ -80,6 +86,8 @@ Development follows **feature/fix branch -> dev -> main**. Use `dev` for ongoing
 
 ## Guides
 
+- [Dashboard and Carousel](docs/dashboard.md)
+- [Update-check Diagnostics](docs/ota-diagnostics.md)
 - [Reader Features](docs/reader-features.md)
 - [Controls](docs/controls.md)
 - [SD Card Fonts](docs/sd-card-fonts.md)

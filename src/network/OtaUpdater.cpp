@@ -14,7 +14,10 @@ OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(ProgressCallback, void*, s
 #include <strings.h>
 
 #include <algorithm>
+#include <cstdarg>
+#include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <utility>
 
 #include "AppVersion.h"
@@ -47,6 +50,30 @@ constexpr size_t OTA_PROGRESS_UPDATE_BYTES = 64 * 1024;
 constexpr size_t OTA_HASH_CHUNK = 4096;
 constexpr char OTA_STAGE_DIR[] = "/.crosspoint";
 constexpr char OTA_STAGE_PATH[] = "/.crosspoint/ota-update.bin";
+
+// Only manual update checks write this bounded, latest-attempt log. Keep the
+// SD handle closed during TLS/network operations to avoid retaining its buffers.
+bool writeCheckLog(const bool first, const char* format, ...) {
+  char line[224];
+  va_list args;
+  va_start(args, format);
+  const int length = vsnprintf(line, sizeof(line), format, args);
+  va_end(args);
+  if (length < 0 || static_cast<size_t>(length) >= sizeof(line)) {
+    LOG_ERR("OTA", "Diagnostic line exceeds buffer");
+    return false;
+  }
+  auto file = Storage.open("/ota-check.log", O_WRITE | O_CREAT | (first ? O_TRUNC : O_APPEND));
+  if (!file) {
+    LOG_ERR("OTA", "Cannot open ota-check.log");
+    return false;
+  }
+  const bool written = file.write(line, static_cast<size_t>(length)) == static_cast<size_t>(length);
+  const bool synced = file.sync();
+  const bool closed = file.close();
+  if (!written || !synced || !closed) LOG_ERR("OTA", "Cannot save ota-check.log");
+  return written && synced && closed;
+}
 
 struct ParsedVersion {
   int segments[VERSION_SEGMENT_COUNT] = {0, 0, 0, 0};
@@ -281,6 +308,32 @@ OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
   otaSize = 0;
   processedSize = 0;
   totalSize = 0;
+  checkDetails[0] = '\0';
+  checkLogSaved =
+      writeCheckLog(true, "InkLike OTA check\nversion=%s\ncommit=%s dirty=%s\ndevice=%s\n", AppVersion::version(),
+                    AppVersion::gitSha(), AppVersion::gitDirtyFlag(), firmwareAssetStem);
+  checkLogSaved = writeCheckLog(false, "url=%s\nunix_time=%lld\nheap_before=%lu largest_before=%lu\n", latestReleaseUrl,
+                                static_cast<long long>(time(nullptr)), static_cast<unsigned long>(ESP.getFreeHeap()),
+                                static_cast<unsigned long>(ESP.getMaxAllocHeap())) &&
+                  checkLogSaved;
+
+  int httpStatus = 0;
+  int socketError = 0;
+  int tlsError = 0;
+  int tlsFlags = 0;
+  esp_err_t tlsResult = ESP_OK;
+  const auto finishCheck = [&](const OtaUpdaterError result, const char* stage, const esp_err_t error) {
+    snprintf(checkDetails, sizeof(checkDetails), "%s HTTP=%d ESP=%s", stage, httpStatus, esp_err_to_name(error));
+    checkLogSaved = writeCheckLog(false,
+                                  "stage=%s result=%d\nesp=%s (%d) http=%d errno=%d tls_result=%d tls=%d flags=0x%x\n"
+                                  "bytes=%zu heap_after=%lu largest_after=%lu\n",
+                                  stage, static_cast<int>(result), esp_err_to_name(error), static_cast<int>(error),
+                                  httpStatus, socketError, static_cast<int>(tlsResult), tlsError, tlsFlags,
+                                  totalBytesReceived, static_cast<unsigned long>(ESP.getFreeHeap()),
+                                  static_cast<unsigned long>(ESP.getMaxAllocHeap())) &&
+                    checkLogSaved;
+    return result;
+  };
 
   esp_err_t esp_err;
   ReleaseJsonParser releaseParser(isMatchingFirmwareAssetName);
@@ -304,43 +357,54 @@ OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
   esp_http_client_handle_t client_handle = esp_http_client_init(&client_config);
   if (!client_handle) {
     LOG_ERR("OTA", "HTTP Client Handle Failed");
-    return INTERNAL_UPDATE_ERROR;
+    return finishCheck(INTERNAL_UPDATE_ERROR, "init", ESP_FAIL);
   }
 
   esp_err = esp_http_client_set_header(client_handle, "User-Agent", AppVersion::userAgent());
   if (esp_err != ESP_OK) {
     LOG_ERR("OTA", "esp_http_client_set_header Failed : %s", esp_err_to_name(esp_err));
     esp_http_client_cleanup(client_handle);
-    return INTERNAL_UPDATE_ERROR;
+    return finishCheck(INTERNAL_UPDATE_ERROR, "header", esp_err);
   }
 
   esp_err = esp_http_client_perform(client_handle);
+  httpStatus = esp_http_client_get_status_code(client_handle);
+  socketError = esp_http_client_get_errno(client_handle);
+  tlsResult = esp_http_client_get_and_clear_last_tls_error(client_handle, &tlsError, &tlsFlags);
   if (esp_err != ESP_OK) {
     LOG_ERR("OTA", "esp_http_client_perform Failed : %s", esp_err_to_name(esp_err));
     esp_http_client_cleanup(client_handle);
-    return HTTP_ERROR;
+    return finishCheck(HTTP_ERROR, "request", esp_err);
   }
 
   esp_err = esp_http_client_cleanup(client_handle);
   if (esp_err != ESP_OK) {
     LOG_ERR("OTA", "esp_http_client_cleanup Failed : %s", esp_err_to_name(esp_err));
-    return INTERNAL_UPDATE_ERROR;
+    return finishCheck(INTERNAL_UPDATE_ERROR, "cleanup", esp_err);
   }
 
   LOG_DBG("OTA", "Response received: %zu bytes total", totalBytesReceived);
   LOG_DBG("OTA", "Parser results: tag=%s firmware=%s", releaseParser.foundTag() ? "yes" : "no",
           releaseParser.foundFirmware() ? "yes" : "no");
+  checkLogSaved = writeCheckLog(false, "tag=%s firmware=%s size=%zu digest=%s\n", releaseParser.getTagName(),
+                                releaseParser.foundFirmware() ? "yes" : "no", releaseParser.getFirmwareSize(),
+                                releaseParser.getFirmwareSha256()) &&
+                  checkLogSaved;
+  if (httpStatus != 200) {
+    LOG_ERR("OTA", "Release request returned HTTP %d", httpStatus);
+    return finishCheck(HTTP_ERROR, "status", ESP_OK);
+  }
 
   if (!releaseParser.foundTag()) {
     LOG_ERR("OTA", "No tag_name in release JSON");
-    return JSON_PARSE_ERROR;
+    return finishCheck(JSON_PARSE_ERROR, "json", ESP_OK);
   }
 
   latestVersion = releaseParser.getTagName();
 
   if (!releaseParser.foundFirmware()) {
     LOG_ERR("OTA", "No matching %s asset found for release %s", firmwareAssetStem, latestVersion.c_str());
-    return NO_UPDATE;
+    return finishCheck(NO_UPDATE, "asset", ESP_OK);
   }
 
   otaUrl = releaseParser.getFirmwareUrl();
@@ -352,7 +416,7 @@ OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
   LOG_DBG("OTA", "Found update: tag=%s size=%zu sha256=%s", latestVersion.c_str(), otaSize,
           otaSha256.empty() ? "missing" : "present");
   LOG_DBG("OTA", "Firmware URL: %s", otaUrl.c_str());
-  return OK;
+  return finishCheck(OK, "complete", ESP_OK);
 }
 
 bool OtaUpdater::isUpdateNewer() const {

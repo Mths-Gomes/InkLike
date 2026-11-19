@@ -25,8 +25,8 @@ class HomeActivity final : public Activity {
   // Keep one rendered carousel frame in RAM. Additional frames remain available
   // through the SD snapshot cache and are paged in on demand.
   static constexpr int kCarouselFrameCount = 1;
-  // Must be >= LyraCarouselMetrics::values.homeRecentBooksCount (asserted in .cpp)
-  static constexpr int kMaxCachedBooks = 3;
+  // Covers both the Dashboard and Lyra carousel limits (asserted in .cpp).
+  static constexpr int kMaxCachedBooks = 5;
 
  private:
   ButtonNavigator buttonNavigator;
@@ -93,6 +93,7 @@ class HomeActivity final : public Activity {
   bool carouselWarmupPending = false;
   uint8_t themeBeforeFrontlightPanel = 0;
   uint8_t scaleBeforeFrontlightPanel = 0;
+  uint8_t dashboardRecentBooksBeforeFrontlightPanel = 1;
 
   std::vector<RecentBook> recentBooks;
   const HomeMenuItem initialMenuItem;
@@ -129,6 +130,7 @@ class HomeActivity final : public Activity {
   int getVisibleRecentBookCount() const;
   bool canSwapHomeBook() const;
   void showNextRecentBookOnHome();
+  void moveDashboardBook(int direction);
   void updateHighlightedBookContext(bool allowChapterTitleRead = true);
   void loadRecentBooks(int maxBooks);
   void loadCoverGridThumbnails();

@@ -614,6 +614,11 @@ bool CrossPointSettings::fromJson(JsonVariantConst doc, bool importingCrossPoint
     this->*(info.valuePtr) = value;
   }
 
+  if (doc["dashboardRecentBooks"].isNull() && !doc["dashboardCarousel"].isNull()) {
+    dashboardRecentBooks = (doc["dashboardCarousel"] | static_cast<uint8_t>(0)) == 1 ? 3 : 1;
+    needsResave = true;
+  }
+
   if (doc["dashboardBookSlot"].isNull()) {
     dashboardBookSlot = showBooksReadCounter ? BOOK_SLOT_COUNT : BOOK_SLOT_HIDDEN;
     needsResave = true;

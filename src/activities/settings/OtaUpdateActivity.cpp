@@ -4,6 +4,8 @@
 #include <I18n.h>
 #include <WiFi.h>
 
+#include <cstdio>
+
 #include "AppVersion.h"
 #include "MappedInputManager.h"
 #include "SdCardFontSystem.h"
@@ -63,6 +65,7 @@ void OtaUpdateActivity::onWifiSelectionComplete(const bool success) {
     {
       RenderLock lock(*this);
       failureMessage = failureMessageFor(res);
+      checkFailed = true;
       state = FAILED;
     }
     requestUpdate(true);
@@ -186,6 +189,17 @@ void OtaUpdateActivity::render(RenderLock&&) {
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   } else if (state == FAILED) {
     renderer.drawCenteredText(UI_10_FONT_ID, top, I18n::getInstance().get(failureMessage), true, EpdFontFamily::BOLD);
+    if (checkFailed && updater.getCheckDetails()[0] != '\0') {
+      char details[128];
+      snprintf(details, sizeof(details), tr(STR_OTA_CHECK_DETAILS), updater.getCheckDetails());
+      const int detailsY = top + height + metrics.verticalSpacing;
+      const Rect bounds{metrics.contentSidePadding, detailsY, pageWidth - metrics.contentSidePadding * 2,
+                        pageHeight - detailsY};
+      UITheme::drawCenteredWrappedText(renderer, bounds, UI_10_FONT_ID, detailsY, details, 3);
+      snprintf(details, sizeof(details), tr(STR_OTA_CHECK_LOG),
+               updater.wasCheckLogSaved() ? "/ota-check.log" : tr(STR_UNAVAILABLE));
+      renderer.drawCenteredText(UI_10_FONT_ID, detailsY + height * 4, details);
+    }
     const auto labels = mappedInput.mapLabels(mappedInput.withBackArrow(tr(STR_BACK)), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   } else if (state == FINISHED) {

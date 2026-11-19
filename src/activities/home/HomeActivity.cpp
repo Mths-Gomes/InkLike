@@ -335,6 +335,8 @@ bool isDashboardTheme() {
 
 bool usesMinimalHomeInteraction() { return isMinimalTheme() || isDashboardTheme(); }
 
+bool usesDashboardCarousel() { return isDashboardTheme() && SETTINGS.dashboardRecentBooks > 1; }
+
 bool showMinimalHomeButtonHints(const MappedInputManager& mappedInput) { return !mappedInput.hasTouch(); }
 
 bool isAnyFrontButtonPressed(const MappedInputManager& mappedInput) {
@@ -535,6 +537,8 @@ CarouselCache gCarouselCache;
 
 static_assert(HomeActivity::kMaxCachedBooks >= LyraCarouselMetrics::values.homeRecentBooksCount,
               "kMaxCachedBooks must cover all carousel slots");
+static_assert(HomeActivity::kMaxCachedBooks >= DashboardMetrics::maxRecentBooks,
+              "kMaxCachedBooks must cover all Dashboard slots");
 
 int HomeActivity::getMenuItemCount() const {
   if (coverGridUi) return static_cast<int>(recentBooks.size()) + (hasOpdsServers ? 5 : 4);
@@ -847,9 +851,13 @@ void HomeActivity::onEnter() {
   carouselWarmupPending = isCarouselTheme;
 
   const auto& metrics = UITheme::getInstance().getMetrics();
-  const int recentBooksToLoad =
-      coverGridUi ? CoverGridHomeUi::MAX_BOOKS
-                  : std::min(kMaxCachedBooks, std::max(metrics.homeRecentBooksCount, HOME_BOOK_SWAP_RECENT_COUNT));
+  int recentBooksToLoad =
+      std::min(kMaxCachedBooks, std::max(metrics.homeRecentBooksCount, HOME_BOOK_SWAP_RECENT_COUNT));
+  if (coverGridUi) {
+    recentBooksToLoad = CoverGridHomeUi::MAX_BOOKS;
+  } else if (isDashboardTheme()) {
+    recentBooksToLoad = std::min(DashboardMetrics::maxRecentBooks, static_cast<int>(SETTINGS.dashboardRecentBooks));
+  }
   RECENT_BOOKS.ensureLoaded();
   loadRecentBooks(recentBooksToLoad);
   gridHasContinueReading = !recentBooks.empty();
@@ -861,7 +869,7 @@ void HomeActivity::onEnter() {
 
     for (int i = 0; i < static_cast<int>(recentBooks.size()); ++i) {
       if (recentBooks[i].path == path) {
-        if (metrics.homeRecentBooksCount == 1 && i > 0 && !coverGridUi) {
+        if (metrics.homeRecentBooksCount == 1 && i > 0 && !coverGridUi && !usesDashboardCarousel()) {
           std::rotate(recentBooks.begin(), recentBooks.begin() + i, recentBooks.end());
           selectorIndex = 0;
           lastCarouselBookIndex = 0;
@@ -883,7 +891,7 @@ void HomeActivity::onEnter() {
   globalStats.refreshReserveFuel();
   showAllDevicesStats = GlobalReadingStats::hasSyncedStats();
   allDevicesGlobalStats = showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;
-  if (isCarouselTheme) {
+  if (isCarouselTheme || usesDashboardCarousel()) {
     loadAllBookStats();
   }
   updateHighlightedBookContext(false);
@@ -911,7 +919,7 @@ void HomeActivity::onEnter() {
     }
     coverGridUi->begin(recentBooks, hasOpdsServers, gridHasContinueReading,
                        gridHasContinueReading ? loadRecentBookProgress(recentBooks.front()) : -1.0f);
-  } else if (initialMenuItem != HomeMenuItem::NONE) {
+  } else if (initialMenuItem != HomeMenuItem::NONE && !usesDashboardCarousel()) {
     const bool includeContinueReading = metrics.homeContinueReadingInMenu && !recentBooks.empty();
     const auto menuItems = buildSelectableHomeMenuItems(hasOpdsServers, hasReadingStats, hasBookmarks, hasClippings,
                                                         includeContinueReading);
@@ -943,11 +951,27 @@ int HomeActivity::getHighlightedBookIndex() const {
 }
 
 int HomeActivity::getVisibleRecentBookCount() const {
+  if (usesDashboardCarousel()) return static_cast<int>(recentBooks.size());
   return coverGridUi ? static_cast<int>(recentBooks.size()) : ::getVisibleRecentBookCount(recentBooks);
 }
 
 bool HomeActivity::canSwapHomeBook() const {
-  return !coverGridUi && UITheme::getInstance().getMetrics().homeRecentBooksCount == 1 && recentBooks.size() > 1;
+  return !coverGridUi && !usesDashboardCarousel() && UITheme::getInstance().getMetrics().homeRecentBooksCount == 1 &&
+         recentBooks.size() > 1;
+}
+
+void HomeActivity::moveDashboardBook(const int direction) {
+  if (recentBooks.size() < 2) return;
+  {
+    RenderLock lock(*this);
+    const int count = static_cast<int>(recentBooks.size());
+    selectorIndex = (getHighlightedBookIndex() + direction + count) % count;
+    lastCarouselBookIndex = selectorIndex;
+    // Release the previous cover snapshot before reading the new book's metadata.
+    invalidateCoverCache();
+    updateHighlightedBookContext(false);
+  }
+  requestUpdate();
 }
 
 void HomeActivity::showNextRecentBookOnHome() {
@@ -1011,12 +1035,14 @@ std::unique_ptr<Activity> HomeActivity::createFrontlightReadingStatsActivity() {
 void HomeActivity::onFrontlightPanelOpened() {
   themeBeforeFrontlightPanel = SETTINGS.uiTheme;
   scaleBeforeFrontlightPanel = SETTINGS.uiScale;
+  dashboardRecentBooksBeforeFrontlightPanel = SETTINGS.dashboardRecentBooks;
   // Save the selection before changed theme metrics can reinterpret its index.
   initialBookPath = getCurrentBookPath();
 }
 
 void HomeActivity::onFrontlightPanelClosed() {
-  if (themeBeforeFrontlightPanel != SETTINGS.uiTheme || scaleBeforeFrontlightPanel != SETTINGS.uiScale) {
+  if (themeBeforeFrontlightPanel != SETTINGS.uiTheme || scaleBeforeFrontlightPanel != SETTINGS.uiScale ||
+      (isDashboardTheme() && dashboardRecentBooksBeforeFrontlightPanel != SETTINGS.dashboardRecentBooks)) {
     // Drawer Settings keeps Home alive. Recreate its theme-specific controls,
     // cover snapshots and thumbnail loading state through the normal lifecycle.
     // ActivityManager owns the replacement; its heavy caches allocate onEnter,
@@ -1552,6 +1578,17 @@ void HomeActivity::loop() {
         activateMinimalMenuAction();
       }
       return;
+    }
+
+    if (usesDashboardCarousel()) {
+      if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
+        moveDashboardBook(-1);
+        return;
+      }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Down)) {
+        moveDashboardBook(1);
+        return;
+      }
     }
 
     switch (mappedInput.wasSwipe()) {
@@ -2351,7 +2388,7 @@ void HomeActivity::onContinueReading() {
 
   const bool isCarousel =
       static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
-  const int bookIndex = isCarousel ? getHighlightedBookIndex() : 0;
+  const int bookIndex = isCarousel || usesDashboardCarousel() ? getHighlightedBookIndex() : 0;
   if (bookIndex >= 0 && bookIndex < static_cast<int>(recentBooks.size())) {
     onSelectBook(recentBooks[bookIndex].path);
   }

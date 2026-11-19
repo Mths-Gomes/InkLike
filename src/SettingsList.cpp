@@ -44,6 +44,10 @@ const std::vector<SettingInfo>& getBaseSettingsList() {
                                 CrossPointSettings::UI_THEME::LYRA_3_COVERS,
                                 CrossPointSettings::UI_THEME::LYRA_CAROUSEL, CrossPointSettings::UI_THEME::ROUNDEDRAFF,
                                 CrossPointSettings::UI_THEME::COVER_GRID}));
+    add(SettingInfo::Enum(StrId::STR_DASHBOARD_RECENT_BOOKS, &CrossPointSettings::dashboardRecentBooks,
+                          {StrId::STR_BOOK_COUNT_1, StrId::STR_BOOK_COUNT_3, StrId::STR_BOOK_COUNT_5},
+                          "dashboardRecentBooks", StrId::STR_CAT_DISPLAY)
+            .withEnumRawValues({1, 3, 5}));
     add(SettingInfo::Toggle(StrId::STR_SWAP_LIBRARY_FILE_BROWSER, &CrossPointSettings::swapLibraryFileBrowser,
                             "swapLibraryFileBrowser", StrId::STR_CAT_DISPLAY));
     add(SettingInfo::Enum(StrId::STR_UI_SCALE, &CrossPointSettings::uiScale, {StrId::STR_SMALL, StrId::STR_LARGE},
